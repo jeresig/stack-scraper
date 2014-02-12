@@ -11,17 +11,14 @@ var resolve = function(path) {
     return fs.absolute(fs.workingDirectory + "/" + path);
 };
 
-var utils = require(resolve("./scrape-util.js"))(casper);
+var utils = require(resolve("./crawl.js"))(casper);
 
 // Load in the scraper file
-var scraperFile = resolve("../scrape/scrapers/" +
-    options.type + "/" + options.site + ".js");
-
 if (options.debug) {
-    console.log("Loading: " + scraperFile);
+    console.log("Loading: " + options.scraperFile);
 }
 
-var scraper = require(scraperFile)(casper);
+var scraper = require(options.scraperFile)(casper);
 
 utils.init(scraper, options);
 

@@ -2,7 +2,7 @@
   "name": "stack-scraper",
   "version": "0.0.0",
   "description": "",
-  "main": "download.js",
+  "main": "stack-scraper.js",
   "directories": {
     "test": "tests"
   },
@@ -23,8 +23,9 @@
     "rimraf": "~2.2.6",
     "async": "~0.2.10",
     "request": "~2.33.0",
-    "libxmljs": "~0.8.1",
-    "argparse": "~0.1.15",
-    "express": "~3.4.8"
+    "libxmljs": "~0.8.1"
+  },
+  "devDependencies": {
+  	"express": "~3.4.8"
   }
 }
