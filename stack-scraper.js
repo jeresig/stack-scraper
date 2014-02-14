@@ -4,6 +4,7 @@ var path = require("path");
 var _ = require("lodash");
 var async = require("async");
 var Spooky = require("spooky");
+var findit = require("findit");
 
 var fileUtils = require("./src/file.js");
 var extractUtils = require("./src/extract.js");
@@ -73,7 +74,7 @@ StackScraper.prototype = {
 
         var settings = _.extend(this.pageSettings,
             this.options.pageSettings,
-            this.options.scraper.pageSettings);
+            this.scraper.pageSettings);
 
         var spooky = new Spooky({
             exec: {
@@ -96,7 +97,7 @@ StackScraper.prototype = {
         });
 
         spooky.on("log", function(log) {
-            if (args.debug) {
+            if (options.debug) {
                 console.log(log.message.replace(/ \- .*/, ""));
             }
         });
@@ -126,19 +127,34 @@ StackScraper.prototype = {
     },
 
     scrapeDirectory: function(dir, callback) {
+        if (this.options.debug) {
+            console.log("Scraping directory:", dir);
+        }
+
+        var queue = [];
         var exclude = this.mirrorExclude.concat(
             this.options.mirrorExclude || []);
-        var queue = [];
 
-        fileUtils.walkTree(function(file) {
+        var finder = findit(dir);
+
+        finder.on("file", function(file, stat) {
+            // Ignore images
+            if (exclude.some(function(ext) {
+                return file.indexOf(ext) >= 0;
+            })) {
+                return;
+            }
+
             queue.push({
                 savedPage: file,
                 queuePos: 0,
                 extract: [1]
             });
-        }, function() {
-            async.eachLimit(queue, 1, processData.bind(this), callback);
         });
+
+        finder.on("end", function() {
+            async.eachLimit(queue, 1, this.processData.bind(this), callback);
+        }.bind(this));
     },
 
     /*
@@ -167,7 +183,7 @@ StackScraper.prototype = {
     processDoc: function(data, callback) {
         var datas = [data];
 
-        this.options.scraper.scrape.forEach(function(queueLevel, queuePos) {
+        this.scraper.scrape.forEach(function(queueLevel, queuePos) {
             datas = _.flatten(datas.map(function(data) {
                 var pageID = data && data.extract && data.extract[queuePos];
 
@@ -180,7 +196,7 @@ StackScraper.prototype = {
                     return [data];
                 }
 
-                var xmlFile = xmlDir + pageID + ".xml";
+                var xmlFile = path.resolve(this.options.xmlDir, pageID + ".xml");
 
                 fileUtils.readXMLFile(xmlFile, function(err, xmlDoc) {
                     if (queueLevel.root) {
@@ -196,12 +212,12 @@ StackScraper.prototype = {
                         return [data];
                     }
                 });
-            }));
-        });
+            }.bind(this)));
+        }.bind(this));
 
         async.forEach(datas, function(data, callback) {
-            if (!data || this.options.scraper.accept &&
-                    !this.options.scraper.accept(data)) {
+            if (!data || this.scraper.accept &&
+                    !this.scraper.accept(data)) {
                 return callback();
             }
 
@@ -218,6 +234,10 @@ StackScraper.prototype = {
     },
 
     processData: function(data, callback) {
+        if (this.options.debug) {
+            console.log("Processing:", data.savedPage);
+        }
+
         var fns = _.values(this.processors);
         async.reduce(fns, [data], function(datas, handler, callback) {
             handler.call(this, datas, callback);
@@ -239,7 +259,7 @@ StackScraper.prototype = {
                 if (!data[processorName]) {
                     return callback(null, data);
                 }
-                processor(data, this.options.scraper, callback);
+                processor(data, this.scraper, callback);
             }.bind(this), function(err, datas) {
                 callback(err, _.flatten(datas));
             });
@@ -265,12 +285,17 @@ StackScraper.prototype = {
 
     reset: function(filter, callback) {
         this.setDataSource(filter);
+
+        if (this.options.debug) {
+            console.log("Resetting.", filter);
+        }
+
         this.dbRemove(filter, callback);
     },
 
     processors: {
         savedPage: function(datas, callback) {
-            var encoding = this.options.scraper.encoding;
+            var encoding = this.scraper.encoding;
 
             async.map(datas, function(data, callback) {
                 if (!data.savedPage) {
@@ -278,8 +303,10 @@ StackScraper.prototype = {
                 }
 
                 fileUtils.md5File(data.savedPage, function(md5) {
-                    var htmlFile = htmlDir + name + ".html";
-                    var xmlFile = xmlDir + name + ".xml";
+                    var htmlFile = path.resolve(this.options.htmlDir,
+                        md5 + ".html");
+                    var xmlFile = path.resolve(this.options.xmlDir,
+                        md5 + ".xml");
 
                     data.pageID = md5;
 
@@ -290,8 +317,8 @@ StackScraper.prototype = {
                                     callback(err, data);
                                 });
                         });
-                });
-            }, callback);
+                }.bind(this));
+            }.bind(this), callback);
         },
 
         extract: function(datas, callback) {
@@ -322,7 +349,7 @@ StackScraper.prototype = {
                 delete data.queuePos;
 
                 return data;
-            }));
+            }.bind(this)));
         }
     },
 
@@ -354,15 +381,15 @@ StackScraper.prototype = {
         this.options.model.create(data, function(err, item) {
             if (!err) {
                 console.log("Saved (%s) %s", source,
-                    args.debug ? JSON.stringify(item) : item.imageName);
+                    this.options.debug ? JSON.stringify(item) : item.imageName);
             }
 
             callback(err);
-        });
+        }.bind(this));
     },
 
     dbUpdate: function(item, data, callback) {
-        if (args.debug) {
+        if (this.options.debug) {
             console.log("Updating...");
         }
 
@@ -385,14 +412,14 @@ StackScraper.prototype = {
 
         } else {
             console.log("No Change (%s/%s) %s", source, item._id,
-                args.debugs ? JSON.stringify(item) : "");
+                this.options.debug ? JSON.stringify(item) : "");
 
             process.nextTick(callback);
         }
     },
 
     dbRemove: function(filter, callback) {
-        this.model.remove(filter, callback);
+        this.options.model.remove(filter, callback);
     }
 };
 
@@ -437,7 +464,7 @@ var runScraper = function(args, callback) {
     var stackScraper = new StackScraper(args);
 
     if (args.reset) {
-        stackScraper.reset(callback, callback);
+        stackScraper.reset({}, callback);
     } else if (args.scrape) {
         stackScraper.scrape({}, callback);
     } else if (args.process) {
@@ -454,7 +481,7 @@ var runScraper = function(args, callback) {
         if (args.update) {
             startScrape();
         } else {
-            stackScraper.reset(startScrape);
+            stackScraper.reset({}, startScrape);
         }
     }
 };

@@ -10,34 +10,6 @@ var Iconv = require("iconv").Iconv;
  */
 
 module.exports = {
-    walkTree: function(dir, callback, done) {
-        var walkTree = this.walkTree;
-
-        fs.readdir(dir, function(err, files) {
-            files.forEach(function(file) {
-                file = dir + file;
-                fs.stat(file, function(err, stats) {
-                    if (stats.isDirectory()) {
-                        walkTree(file, callback);
-                        return;
-                    }
-
-                    // Ignore images
-                    if (exclude.some(function(ext) {
-                        return file.indexOf(ext) >= 0;
-                    })) {
-                        return;
-                    }
-
-                    callback(null, file);
-                });
-            });
-        });
-
-        // TODO: Do this for real
-        done();
-    },
-
     md5File: function(file, callback) {
         cp.execFile("md5", ["-q", file], null, function(err, md5) {
             md5 = md5.toString().replace(/\s*/g, "");
