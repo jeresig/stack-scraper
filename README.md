@@ -9,12 +9,12 @@
  */
 
 /* Options:
- * - source
- * - model
+ * - source *
+ * - model *
  * - postProcessors
  * - pageSettings
  * - mirrorExclude
- * - scraperFile
+ * - scraperFile *
  * - htmlDir
  * - xmlDir
  * - sourceName

@@ -1,6 +1,16 @@
 var assert = require("assert");
 var express = require("express");
 
+argparser.addArgument(["--runtests"], {
+    action: "storeTrue",
+    help: "Run tests."
+});
+
+argparser.addArgument(["--saveresults"], {
+    action: "storeTrue",
+    help: "Save the test results."
+});
+
 var cleanTestResults = function(datas) {
     return datas.map(function(item) {
         var result = _.omit(item, ["_id", "created", "modified"]);
@@ -58,6 +68,26 @@ var testData = function(callback) {
         });
     });
 };
+
+if (args.runtests) {
+    var scraperDir = site.env.resolve(__dirname + "/scrapers/" +
+        args.type + "/");
+
+    fs.readdir(scraperDir, function(err, sites) {
+        sites = sites.filter(function(site) {
+            return site.indexOf("_test.js") >= 0;
+        }).map(function(site) {
+            return site.replace(".js", "");
+        });
+
+        async.mapLimit(sites, 1, initSite, function(err) {
+            if (err) {
+                return callback(err);
+            }
+            testData(callback);
+        });
+    });
+}
 
 if (args.runtests) {
     if (scraper.type === "server") {

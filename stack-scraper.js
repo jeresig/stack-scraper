@@ -1,11 +1,12 @@
 var fs = require("fs");
+var path = require("path");
 
 var _ = require("lodash");
 var async = require("async");
 var Spooky = require("spooky");
 
-var fileUtils = require("./utils/file.js");
-var extractUtils = require("./utils/extract.js");
+var fileUtils = require("./src/file.js");
+var extractUtils = require("./src/extract.js");
 
 // TODO: Where is the id being generated?
 //       Shouldn't it be used as _id?
@@ -22,15 +23,15 @@ var StackScraper = function(options) {
         throw "StackScraper: Please provide a source name.";
     }
 
-    if (!this.options.scraperFile) {
+    if (!this.options.scraperFile && !fs.existsSync(this.options.scraperFile)) {
         throw "StackScraper: Please provide a path to a scraper file.";
     }
 
-    if (!this.options.htmlDir) {
+    if (!this.options.htmlDir && !fs.existsSync(this.options.htmlDir)) {
         throw "StackScraper: Please provide a path to store the HTML files in.";
     }
 
-    if (!this.options.xmlDir) {
+    if (!this.options.xmlDir && !fs.existsSync(this.options.xmlDir)) {
         throw "StackScraper: Please provide a path to store the XML files in.";
     }
 
@@ -262,6 +263,11 @@ StackScraper.prototype = {
         }.bind(this));
     },
 
+    reset: function(filter, callback) {
+        this.setDataSource(filter);
+        this.dbRemove(filter, callback);
+    },
+
     processors: {
         savedPage: function(datas, callback) {
             var encoding = this.options.scraper.encoding;
@@ -383,7 +389,77 @@ StackScraper.prototype = {
 
             process.nextTick(callback);
         }
+    },
+
+    dbRemove: function(filter, callback) {
+        this.model.remove(filter, callback);
     }
 };
 
-module.exports = StackScraper;
+var runScraper = function(args, callback) {
+    if (args.rootDataDir && args.type) {
+        args.rootDataDir = path.resolve(__dirname, args.rootDataDir);
+
+        var typeDataRoot = path.resolve(args.rootDataDir, args.type);
+        var sourceDataRoot = path.resolve(typeDataRoot, args.source);
+
+        args.htmlDir = path.resolve(sourceDataRoot,
+            args.htmlDir || "./pages/");
+        args.xmlDir = path.resolve(sourceDataRoot,
+            args.xmlDir || "./xml/");
+        args.mirrorDir = path.resolve(sourceDataRoot,
+            args.mirrorDir || "./mirror/");
+
+        var otherDirs = (args.directories || []).map(function(dir) {
+            return path.resolve(sourceDataRoot, dir);
+        });
+
+        var directories = [
+            args.rootDataDir,
+            typeDataRoot,
+            sourceDataRoot,
+            args.htmlDir,
+            args.xmlDir
+        ].concat(otherDirs);
+
+        directories.forEach(function(dir) {
+            if (!fs.existsSync(dir)) {
+                fs.mkdirSync(dir);
+            }
+        });
+    }
+
+    if (args.scrapersDir && args.type) {
+        args.scrapersDir = path.resolve(__dirname, args.scrapersDir, args.type);
+        args.scraperFile = path.resolve(args.scrapersDir, args.source + ".js");
+    }
+
+    var stackScraper = new StackScraper(args);
+
+    if (args.reset) {
+        stackScraper.reset(callback, callback);
+    } else if (args.scrape) {
+        stackScraper.scrape({}, callback);
+    } else if (args.process) {
+        stackScraper.process({}, callback);
+    } else {
+        var startScrape = function() {
+            if (args.mirrorDir && fs.existsSync(args.mirrorDir)) {
+                stackScraper.scrapeDirectory(args.mirrorDir, callback);
+            } else {
+                stackScraper.download(callback);
+            }
+        };
+
+        if (args.update) {
+            startScrape();
+        } else {
+            stackScraper.reset(startScrape);
+        }
+    }
+};
+
+module.exports = {
+    StackScraper: StackScraper,
+    run: runScraper
+};

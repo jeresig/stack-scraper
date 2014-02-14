@@ -55,7 +55,7 @@ module.exports = {
                 .pipe(fs.createWriteStream(to))
                 .on("close", callback);
         });
-    }
+    },
 
     tidyHTML: function(html, outputFile, encoding, callback) {
         if (encoding) {
