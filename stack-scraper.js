@@ -183,17 +183,19 @@ StackScraper.prototype = {
     processDoc: function(data, callback) {
         var datas = [data];
 
-        this.scraper.scrape.forEach(function(queueLevel, queuePos) {
-            datas = _.flatten(datas.map(function(data) {
+        async.eachLimit(this.scraper.scrape, 1, function(queueLevel, callback) {
+            var queuePos = this.scraper.scrape.indexOf(queueLevel);
+
+            async.map(datas, function(data, callback) {
                 var pageID = data && data.extract && data.extract[queuePos];
 
                 if (!pageID) {
-                    return [data];
+                    return callback(null, [data]);
                 }
 
                 if (typeof queueLevel.extract === "function") {
                     extractUtils.extract(null, queueLevel.extract, data);
-                    return [data];
+                    return callback(null, [data]);
                 }
 
                 var xmlFile = path.resolve(this.options.xmlDir, pageID + ".xml");
@@ -201,36 +203,39 @@ StackScraper.prototype = {
                 fileUtils.readXMLFile(xmlFile, function(err, xmlDoc) {
                     if (queueLevel.root) {
                         var roots = xmlDoc.find(queueLevel.root);
-                        return roots.map(function(root) {
+                        callback(null, roots.map(function(root) {
                             var clonedData = _.cloneDeep(data);
                             extractUtils.extract(root, queueLevel.extract,
                                 clonedData);
                             return clonedData;
-                        });
+                        }));
                     } else {
                         extractUtils.extract(xmlDoc, queueLevel.extract, data);
-                        return [data];
+                        callback(null, [data]);
                     }
                 });
-            }.bind(this)));
-        }.bind(this));
-
-        async.forEach(datas, function(data, callback) {
-            if (!data || this.scraper.accept &&
-                    !this.scraper.accept(data)) {
-                return callback();
-            }
-
-            this.postProcess(data, function(err, datas) {
-                if (err) {
-                    return callback(err);
+            }.bind(this), function(err, _datas) {
+                datas = _.flatten(datas);
+                callback();
+            });
+        }.bind(this), function() {
+            async.eachLimit(datas, 1, function(data, callback) {
+                if (!data || this.scraper.accept &&
+                        !this.scraper.accept(data)) {
+                    return callback();
                 }
 
-                async.forEach(datas, this.saveData.bind(this), callback);
-            }.bind(this));
-        }.bind(this), function(err, data) {
-            callback(err, data);
-        });
+                this.postProcess(data, function(err, datas) {
+                    if (err) {
+                        return callback(err);
+                    }
+
+                    async.forEach(datas, this.saveData.bind(this), callback);
+                }.bind(this));
+            }.bind(this), function(err, data) {
+                callback(err, data);
+            });
+        }.bind(this));
     },
 
     processData: function(data, callback) {
@@ -254,7 +259,7 @@ StackScraper.prototype = {
         var fns = _.keys(this.options.postProcessors || {});
 
         async.reduce(fns, [data], function(datas, processorName, callback) {
-            var processor = postProcessors[processorName];
+            var processor = this.options.postProcessors[processorName];
             async.map(datas, function(data, callback) {
                 if (!data[processorName]) {
                     return callback(null, data);
@@ -380,7 +385,7 @@ StackScraper.prototype = {
 
         this.options.model.create(data, function(err, item) {
             if (!err) {
-                console.log("Saved (%s) %s", source,
+                console.log("Saved (%s) %s", this.options.source,
                     this.options.debug ? JSON.stringify(item) : item.imageName);
             }
 
@@ -403,15 +408,15 @@ StackScraper.prototype = {
 
             item.save(function(err) {
                 if (!err) {
-                    console.log("Updated (%s/%s) %s", source, item._id,
+                    console.log("Updated (%s/%s) %s", this.options.source, item._id,
                         JSON.stringify(delta));
                 }
 
                 callback(err);
-            });
+            }.bind(this));
 
         } else {
-            console.log("No Change (%s/%s) %s", source, item._id,
+            console.log("No Change (%s/%s) %s", this.options.source, item._id,
                 this.options.debug ? JSON.stringify(item) : "");
 
             process.nextTick(callback);
