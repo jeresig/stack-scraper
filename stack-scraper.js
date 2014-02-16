@@ -566,7 +566,7 @@ var cli = function(genOptions, done) {
     var scrapeSource = function(source, callback) {
         var options = _.extend({}, args, {source: source});
         options = _.extend(options, genOptions(options));
-        runScraper(options);
+        runScraper(options, callback);
     };
 
     if (args.source === "*") {
