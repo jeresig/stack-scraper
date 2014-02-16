@@ -517,7 +517,70 @@ var runScraper = function(args, callback) {
     }
 };
 
+var cli = function(genOptions, done) {
+    var ArgumentParser = require("argparse").ArgumentParser;
+
+    var pkg = require("./package");
+
+    var argparser = new ArgumentParser({
+        description: pkg.description,
+        version: pkg.version,
+        addHelp: true
+    });
+
+    argparser.addArgument(["type"], {
+        help: "Type of scraper to load (e.g. 'images' or 'artists')."
+    });
+
+    argparser.addArgument(["source"], {
+        help: "The name of the source to download (e.g. 'ndl' or '*')."
+    });
+
+    argparser.addArgument(["--scrape"], {
+        action: "storeTrue",
+        help: "..."
+    });
+
+    argparser.addArgument(["--process"], {
+        action: "storeTrue",
+        help: "..."
+    });
+
+    argparser.addArgument(["--update"], {
+        action: "storeTrue",
+        help: "..."
+    });
+
+    argparser.addArgument(["--reset"], {
+        action: "storeTrue",
+        help: "..."
+    });
+
+    argparser.addArgument(["--debug"], {
+        action: "storeTrue",
+        help: "..."
+    });
+
+    var args = argparser.parseArgs();
+
+    var scrapeSource = function(source, callback) {
+        var options = _.extend({}, args, {source: source});
+        options = _.extend(options, genOptions(options));
+        runScraper(options);
+    };
+
+    if (args.source === "*") {
+        var typeDir = path.resolve(options.scrapersDir, args.type);
+        fs.readdir(typeDir, function(err, sources) {
+            async.mapLimit(sources, 1, scrapeSource, done);
+        });
+    } else {
+        scrapeSource(args.source, done);
+    }
+};
+
 module.exports = {
     StackScraper: StackScraper,
-    run: runScraper
+    run: runScraper,
+    cli: cli
 };

@@ -26,7 +26,8 @@
     "libxmljs": "~0.8.1",
     "iconv": "~2.0.7",
     "spooky": "git://github.com/jeresig/SpookyJS.git#exec",
-    "findit": "~1.1.0"
+    "findit": "~1.1.0",
+    "argparse": "~0.1.15"
   },
   "devDependencies": {
     "express": "~3.4.8"
