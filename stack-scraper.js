@@ -173,8 +173,10 @@ StackScraper.prototype = {
             }
 
             async.eachLimit(datas, 1, function(data, callback) {
-                this.postProcess(data, function() {
-                    this.dbUpdate(data, {}, callback);
+                this.postProcess(data, function(err, datas) {
+                    async.eachLimit(datas, 1, function(data, callback) {
+                        this.dbUpdate(data, {}, callback);
+                    }.bind(this), callback);
                 }.bind(this));
             }.bind(this), callback);
         });
@@ -222,6 +224,7 @@ StackScraper.prototype = {
             async.eachLimit(datas, 1, function(data, callback) {
                 if (!data || this.scraper.accept &&
                         !this.scraper.accept(data)) {
+                    console.log("REJECTED");
                     return callback();
                 }
 
@@ -266,9 +269,32 @@ StackScraper.prototype = {
                 }
                 processor(data, this.scraper, callback);
             }.bind(this), function(err, datas) {
+                datas = datas.map(this.enforceTypes.bind(this));
                 callback(err, _.flatten(datas));
-            });
+            }.bind(this));
         }.bind(this), callback);
+    },
+
+    enforceTypes: function(data) {
+        var schema = this.options.model.schema;
+
+        for (var prop in data) {
+            var path = schema.path(prop);
+
+            if (!path) {
+                continue;
+            }
+
+            var pathType = path.options.type;
+            if (pathType instanceof Array) {
+                // Force the value into an array
+                if (!(data[prop] instanceof Array) && data[prop] != null) {
+                    data[prop] = [data[prop]];
+                }
+            }
+        }
+
+        return data;
     },
 
     saveData: function(data, callback) {
