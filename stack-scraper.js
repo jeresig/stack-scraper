@@ -494,7 +494,7 @@ var runScraper = function(args, callback) {
 
     var stackScraper = new StackScraper(args);
 
-    if (args.reset) {
+    if (args["delete"]) {
         stackScraper.reset({}, callback);
     } else if (args.scrape) {
         stackScraper.scrape({}, callback);
@@ -538,27 +538,27 @@ var cli = function(genOptions, done) {
 
     argparser.addArgument(["--scrape"], {
         action: "storeTrue",
-        help: "..."
+        help: "Scrape and process the results from the already-downloaded pages."
     });
 
     argparser.addArgument(["--process"], {
         action: "storeTrue",
-        help: "..."
+        help: "Process the results from the already-downloaded pages."
     });
 
     argparser.addArgument(["--update"], {
         action: "storeTrue",
-        help: "..."
+        help: "Force the existing entries to be updated rather than deleted first."
     });
 
-    argparser.addArgument(["--reset"], {
+    argparser.addArgument(["--delete"], {
         action: "storeTrue",
-        help: "..."
+        help: "Delete all the data associated with the particular source."
     });
 
     argparser.addArgument(["--debug"], {
         action: "storeTrue",
-        help: "..."
+        help: "Output additional debugging information."
     });
 
     var args = argparser.parseArgs();
