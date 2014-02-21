@@ -409,7 +409,9 @@ StackScraper.prototype = {
         this.setDataSource(data);
         this.setDataModified(data);
 
-        this.options.model.create(data, function(err, item) {
+        var obj = new this.options.model(data);
+
+        obj.save(function(err, item) {
             if (!err) {
                 console.log("Saved (%s) %s", this.options.source,
                     this.options.debug ? JSON.stringify(item) : item.imageName);
