@@ -78,7 +78,7 @@ StackScraper.prototype = {
 
         var spooky = new Spooky({
             exec: {
-                file: __dirName + "/casper-bootstrap.js",
+                file: __dirname + "/casper-bootstrap.js",
                 options: options
             },
             casper: {
@@ -337,6 +337,7 @@ StackScraper.prototype = {
                 }
 
                 fileUtils.md5File(data.savedPage, function(md5) {
+                    var savedPage = data.savedPage;
                     var htmlFile = path.resolve(this.options.htmlDir,
                         md5 + ".html");
                     var xmlFile = path.resolve(this.options.xmlDir,
@@ -345,8 +346,9 @@ StackScraper.prototype = {
                     data.pageID = md5;
                     data._id = this.options.source + "/" + md5;
 
-                    fileUtils.condCopyFile(data.savedPage, htmlFile,
+                    fileUtils.condCopyFile(savedPage, htmlFile,
                         function() {
+                            delete data.savedPage;
                             fileUtils.convertXML(htmlFile, xmlFile, encoding,
                                 function(err) {
                                     callback(err, data);
@@ -401,6 +403,27 @@ StackScraper.prototype = {
         data.extracted = true;
     },
 
+    merge: function(orig, source, path) {
+        path = path || [];
+
+        for (var prop in source) {
+            if (typeof orig[prop] === "object" && orig[prop]) {
+                this.merge(orig[prop], source[prop], [prop]);
+            } else {
+                if (orig[prop] !== source[prop]) {
+                    var fullPath = path.concat(prop).join(".");
+
+                    if (this.options.debug) {
+                        console.log("Updated:", fullPath, orig[prop], source[prop]);
+                    }
+
+                    orig[prop] = source[prop];
+                    orig.markModified(fullPath);
+                }
+            }
+        }
+    },
+
     dbFind: function(filter, callback) {
         this.options.model.find(filter).exec(callback);
     },
@@ -417,8 +440,8 @@ StackScraper.prototype = {
 
         obj.save(function(err, item) {
             if (!err) {
-                console.log("Saved (%s) %s", this.options.source,
-                    this.options.debug ? JSON.stringify(item) : item._id);
+                console.log("Saved (%s) %s", item._id,
+                    this.options.debug ? JSON.stringify(item) : "");
             }
 
             callback(err);
@@ -430,7 +453,7 @@ StackScraper.prototype = {
             console.log("Updating...");
         }
 
-        _.extend(item, data);
+        this.merge(item, data);
 
         var delta = item.$__delta();
 
@@ -440,15 +463,15 @@ StackScraper.prototype = {
 
             item.save(function(err) {
                 if (!err) {
-                    console.log("Updated (%s/%s) %s", this.options.source,
-                        item._id, JSON.stringify(delta));
+                    console.log("Updated (%s) %s", item._id,
+                        JSON.stringify(delta));
                 }
 
                 callback(err);
             }.bind(this));
 
         } else {
-            console.log("No Change (%s/%s) %s", this.options.source, item._id,
+            console.log("No Change (%s) %s", item._id,
                 this.options.debug ? JSON.stringify(item) : "");
 
             process.nextTick(callback);
