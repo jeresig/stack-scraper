@@ -9,9 +9,6 @@ var findit = require("findit");
 var fileUtils = require("./src/file.js");
 var extractUtils = require("./src/extract.js");
 
-// TODO: Where is the id being generated?
-//       Shouldn't it be used as _id?
-
 var StackScraper = function(options) {
     this.options = options;
     this.extractQueue = [];
