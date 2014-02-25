@@ -224,7 +224,9 @@ StackScraper.prototype = {
             async.eachLimit(datas, 1, function(data, callback) {
                 if (!data || this.scraper.accept &&
                         !this.scraper.accept(data)) {
-                    console.log("REJECTED");
+                    if (this.options.debug) {
+                        console.log("Rejected:", data);
+                    }
                     return callback();
                 }
 
@@ -304,8 +306,9 @@ StackScraper.prototype = {
         }
 
         this.dbFindById(data._id, function(err, item) {
-            if (err) {
-                return callback(err);
+            if (err || !item) {
+                this.dbSave(data, callback);
+                return;
             }
 
             this.dbUpdate(item, data, function(err, data) {
@@ -340,6 +343,7 @@ StackScraper.prototype = {
                         md5 + ".xml");
 
                     data.pageID = md5;
+                    data._id = this.options.source + "/" + md5;
 
                     fileUtils.condCopyFile(data.savedPage, htmlFile,
                         function() {
@@ -414,7 +418,7 @@ StackScraper.prototype = {
         obj.save(function(err, item) {
             if (!err) {
                 console.log("Saved (%s) %s", this.options.source,
-                    this.options.debug ? JSON.stringify(item) : item.imageName);
+                    this.options.debug ? JSON.stringify(item) : item._id);
             }
 
             callback(err);
@@ -436,8 +440,8 @@ StackScraper.prototype = {
 
             item.save(function(err) {
                 if (!err) {
-                    console.log("Updated (%s/%s) %s", this.options.source, item._id,
-                        JSON.stringify(delta));
+                    console.log("Updated (%s/%s) %s", this.options.source,
+                        item._id, JSON.stringify(delta));
                 }
 
                 callback(err);
