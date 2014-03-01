@@ -10,32 +10,7 @@ var request = require("request");
 var fileUtils = require("./src/file.js");
 var extractUtils = require("./src/extract.js");
 
-var StackScraper = function(options) {
-    this.options = options;
-    this.extractQueue = [];
-
-    if (!this.options.model) {
-        throw "StackScraper: Please provide a model.";
-    }
-
-    if (!this.options.source) {
-        throw "StackScraper: Please provide a source name.";
-    }
-
-    if (!this.options.scraperFile && !fs.existsSync(this.options.scraperFile)) {
-        throw "StackScraper: Please provide a path to a scraper file.";
-    }
-
-    if (!this.options.htmlDir && !fs.existsSync(this.options.htmlDir)) {
-        throw "StackScraper: Please provide a path to store the HTML files in.";
-    }
-
-    if (!this.options.xmlDir && !fs.existsSync(this.options.xmlDir)) {
-        throw "StackScraper: Please provide a path to store the XML files in.";
-    }
-
-    this.loadScraperFile();
-};
+var StackScraper = function() {};
 
 StackScraper.prototype = {
     pageSettings: {
@@ -48,6 +23,33 @@ StackScraper.prototype = {
     },
 
     mirrorExclude: [".jpg", ".jpeg", ".png", ".gif"],
+
+    init: function(options) {
+        this.options = options;
+        this.extractQueue = [];
+
+        if (!this.options.model) {
+            throw "StackScraper: Please provide a model.";
+        }
+
+        if (!this.options.source) {
+            throw "StackScraper: Please provide a source name.";
+        }
+
+        if (!this.options.scraperFile && !fs.existsSync(this.options.scraperFile)) {
+            throw "StackScraper: Please provide a path to a scraper file.";
+        }
+
+        if (!this.options.htmlDir && !fs.existsSync(this.options.htmlDir)) {
+            throw "StackScraper: Please provide a path to store the HTML files in.";
+        }
+
+        if (!this.options.xmlDir && !fs.existsSync(this.options.xmlDir)) {
+            throw "StackScraper: Please provide a path to store the XML files in.";
+        }
+
+        this.loadScraperFile();
+    },
 
     loadScraperFile: function() {
         this.scraper = require(this.options.scraperFile)();
@@ -521,71 +523,67 @@ StackScraper.prototype = {
 
     dbRemove: function(filter, callback) {
         this.options.model.remove(filter, callback);
-    }
-};
+    },
 
-var runScraper = function(args, callback) {
-    if (args.rootDataDir && args.type) {
-        args.rootDataDir = path.resolve(__dirname, args.rootDataDir);
+    run: function(args, callback) {
+        if (args.rootDataDir && args.type) {
+            var dirs = {
+                rootDataDir: path.resolve(__dirname, args.rootDataDir)
+            };
 
-        var typeDataRoot = path.resolve(args.rootDataDir, args.type);
-        var sourceDataRoot = path.resolve(typeDataRoot, args.source);
+            dirs.typeDataRoot = path.resolve(dirs.rootDataDir, args.type);
+            dirs.sourceDataRoot = path.resolve(dirs.typeDataRoot, args.source);
 
-        args.htmlDir = path.resolve(sourceDataRoot,
-            args.htmlDir || "./pages/");
-        args.xmlDir = path.resolve(sourceDataRoot,
-            args.xmlDir || "./xml/");
-        args.mirrorDir = path.resolve(sourceDataRoot,
-            args.mirrorDir || "./mirror/");
+            dirs.htmlDir = path.resolve(dirs.sourceDataRoot,
+                args.htmlDir || "./pages/");
+            dirs.xmlDir = path.resolve(dirs.sourceDataRoot,
+                args.xmlDir || "./xml/");
+            dirs.mirrorDir = path.resolve(dirs.sourceDataRoot,
+                args.mirrorDir || "./mirror/");
 
-        var otherDirs = (args.directories || []).map(function(dir) {
-            return path.resolve(sourceDataRoot, dir);
-        });
+            Object.keys(args.directories).forEach(function(dirName) {
+                dirs[dirName] = path.resolve(dirs.sourceDataRoot,
+                    args.directories[dirName]);
+            });
 
-        var directories = [
-            args.rootDataDir,
-            typeDataRoot,
-            sourceDataRoot,
-            args.htmlDir,
-            args.xmlDir
-        ].concat(otherDirs);
+            Object.keys(dirs).forEach(function(dirName) {
+                var dir = dirs[dirName];
+                if (!fs.existsSync(dir)) {
+                    fs.mkdirSync(dir);
+                }
+            });
 
-        directories.forEach(function(dir) {
-            if (!fs.existsSync(dir)) {
-                fs.mkdirSync(dir);
-            }
-        });
-    }
+            _.extend(args, dirs);
+        }
 
-    if (args.scrapersDir && args.type) {
-        args.scrapersDir = path.resolve(__dirname, args.scrapersDir, args.type);
-        args.scraperFile = path.resolve(args.scrapersDir, args.source + ".js");
-    }
+        if (args.scrapersDir && args.type) {
+            args.scrapersDir = path.resolve(__dirname, args.scrapersDir, args.type);
+            args.scraperFile = path.resolve(args.scrapersDir, args.source + ".js");
+        }
 
-    var stackScraper = new StackScraper(args);
-
-    if (args["delete"]) {
-        stackScraper.reset({}, callback);
-    } else if (args.scrape) {
-        stackScraper.scrape({}, callback);
-    } else if (args.process) {
-        stackScraper.process({}, callback);
-    } else if (args.testURL) {
-        stackScraper.options.debug = true;
-        stackScraper.testURL(args.testURL, callback);
-    } else {
-        var startScrape = function() {
-            if (args.mirrorDir && fs.existsSync(args.mirrorDir)) {
-                stackScraper.scrapeDirectory(args.mirrorDir, callback);
-            } else {
-                stackScraper.download(callback);
-            }
-        };
-
-        if (args.update) {
-            startScrape();
+        if (args["delete"]) {
+            this.reset({}, callback);
+        } else if (args.scrape) {
+            this.scrape({}, callback);
+        } else if (args.process) {
+            this.process({}, callback);
+        } else if (args.testURL) {
+            this.options.debug = true;
+            this.testURL(args.testURL, callback);
         } else {
-            stackScraper.reset({}, startScrape);
+            var startScrape = function() {
+                if (args.mirrorDir && fs.existsSync(args.mirrorDir)) {
+                    this.scrapeDirectory(args.mirrorDir, callback);
+                } else {
+                    this.download(callback);
+                }
+            }.bind(this);
+
+            if (args.update) {
+                startScrape();
+            } else {
+                stackScraper.reset({}, startScrape);
+            }
         }
     }
 };
@@ -642,9 +640,11 @@ var cli = function(genOptions, done) {
     var args = argparser.parseArgs();
 
     var scrapeSource = function(source, callback) {
+        var stackScraper = new StackScraper();
         var options = _.extend({}, args, {source: source});
-        options = _.extend(options, genOptions(options));
-        runScraper(options, callback);
+        options = _.extend(options, genOptions(options, stackScraper));
+        stackScraper.init(options);
+        stackScraper.run(options, callback);
     };
 
     if (args.source === "*") {
@@ -659,6 +659,5 @@ var cli = function(genOptions, done) {
 
 module.exports = {
     StackScraper: StackScraper,
-    run: runScraper,
     cli: cli
 };
