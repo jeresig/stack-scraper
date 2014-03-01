@@ -5,6 +5,7 @@ var _ = require("lodash");
 var async = require("async");
 var Spooky = require("spooky");
 var findit = require("findit");
+var request = require("request");
 
 var fileUtils = require("./src/file.js");
 var extractUtils = require("./src/extract.js");
@@ -154,6 +155,36 @@ StackScraper.prototype = {
         }.bind(this));
     },
 
+    testURL: function(url, callback) {
+        var tmpFile = "/tmp/" + (new Date).getTime() + Math.random();
+
+        console.log("Downloading %s to %s", url, tmpFile);
+
+        request(url)
+            .pipe(fs.createWriteStream(tmpFile))
+            .on("close", function() {
+                console.log("Done.");
+
+                var data = {
+                    savedPage: tmpFile,
+                    queuePos: 0,
+                    extract: [],
+                    noSave: true
+                };
+
+                this.scraper.scrape.forEach(function(level, pos) {
+                    if (level.extract) {
+                        data.queuePos = pos;
+                        data.extract[pos] = 1;
+                    }
+                });
+
+                console.log("Adding to queue for processing:", data);
+
+                this.processData(data, callback);
+            }.bind(this));
+    },
+
     /*
      * process(filter, callback)
      *
@@ -200,6 +231,10 @@ StackScraper.prototype = {
                 var xmlFile = path.resolve(this.options.xmlDir, pageID + ".xml");
 
                 fileUtils.readXMLFile(xmlFile, function(err, xmlDoc) {
+                    if (err) {
+                        return callback(err);
+                    }
+
                     if (queueLevel.root) {
                         var roots = xmlDoc.find(queueLevel.root);
                         callback(null, roots.map(function(root) {
@@ -215,9 +250,13 @@ StackScraper.prototype = {
                 });
             }.bind(this), function(err, _datas) {
                 datas = _.flatten(datas);
-                callback();
+                callback(err);
             });
-        }.bind(this), function() {
+        }.bind(this), function(err) {
+            if (err) {
+                return callback(err);
+            }
+
             async.eachLimit(datas, 1, function(data, callback) {
                 if (!data || this.scraper.accept &&
                         !this.scraper.accept(data)) {
@@ -297,6 +336,11 @@ StackScraper.prototype = {
     },
 
     saveData: function(data, callback) {
+        if (data.noSave) {
+            console.log("Final Data:", data);
+            return callback();
+        }
+
         if (!data._id) {
             this.dbSave(data, callback);
             return;
@@ -526,6 +570,9 @@ var runScraper = function(args, callback) {
         stackScraper.scrape({}, callback);
     } else if (args.process) {
         stackScraper.process({}, callback);
+    } else if (args.testURL) {
+        stackScraper.options.debug = true;
+        stackScraper.testURL(args.testURL, callback);
     } else {
         var startScrape = function() {
             if (args.mirrorDir && fs.existsSync(args.mirrorDir)) {
@@ -585,6 +632,11 @@ var cli = function(genOptions, done) {
     argparser.addArgument(["--debug"], {
         action: "storeTrue",
         help: "Output additional debugging information."
+    });
+
+    argparser.addArgument(["--test-url"], {
+        help: "Test extraction against a specified URL.",
+        dest: "testURL"
     });
 
     var args = argparser.parseArgs();
