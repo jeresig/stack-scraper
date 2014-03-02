@@ -25,6 +25,8 @@ StackScraper.prototype = {
     mirrorExclude: [".jpg", ".jpeg", ".png", ".gif"],
 
     init: function(options) {
+        this.setupDirs(options);
+
         this.options = options;
         this.extractQueue = [];
 
@@ -525,7 +527,7 @@ StackScraper.prototype = {
         this.options.model.remove(filter, callback);
     },
 
-    run: function(args, callback) {
+    setupDirs: function(args) {
         if (args.rootDataDir && args.type) {
             var dirs = {
                 rootDataDir: path.resolve(__dirname, args.rootDataDir)
@@ -560,7 +562,9 @@ StackScraper.prototype = {
             args.scrapersDir = path.resolve(__dirname, args.scrapersDir, args.type);
             args.scraperFile = path.resolve(args.scrapersDir, args.source + ".js");
         }
+    },
 
+    run: function(args, callback) {
         if (args["delete"]) {
             this.reset({}, callback);
         } else if (args.scrape) {
