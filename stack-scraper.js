@@ -311,10 +311,25 @@ StackScraper.prototype = {
                 }
                 processor(data, this.scraper, callback);
             }.bind(this), function(err, datas) {
-                datas = datas.map(this.enforceTypes.bind(this));
                 callback(err, _.flatten(datas));
             }.bind(this));
-        }.bind(this), callback);
+        }.bind(this), function(err, datas) {
+            if (datas) {
+                datas = datas.map(this.enforceTypes.bind(this));
+            }
+
+            callback(err, datas);
+        }.bind(this));
+    },
+
+    types: {
+        Array: function(val) {
+            return [val];
+        },
+
+        Boolean: function(val) {
+            return val === "true";
+        }
     },
 
     enforceTypes: function(data) {
@@ -328,10 +343,14 @@ StackScraper.prototype = {
             }
 
             var pathType = path.options.type;
-            if (pathType instanceof Array) {
-                // Force the value into an array
-                if (!(data[prop] instanceof Array) && data[prop] != null) {
-                    data[prop] = [data[prop]];
+            var pathName = pathType.name || pathType.constructor.name;
+            var typeFn = this.types[pathName];
+
+            if (typeFn) {
+                var val = data[prop];
+
+                if (val != null && val.constructor.name !== pathName) {
+                    data[prop] = typeFn(val);
                 }
             }
         }
@@ -389,7 +408,8 @@ StackScraper.prototype = {
                         md5 + ".xml");
 
                     data.pageID = md5;
-                    data._id = this.options.source + "/" + md5;
+                    // TODO: Should we ever use this? We should enforce an _id.
+                    //data._id = this.options.source + "/" + md5;
 
                     fileUtils.condCopyFile(savedPage, htmlFile,
                         function() {
