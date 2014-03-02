@@ -623,7 +623,7 @@ StackScraper.prototype = {
             if (args.test || args.update) {
                 startScrape();
             } else {
-                stackScraper.reset({}, startScrape);
+                this.reset({}, startScrape);
             }
         }
     }
