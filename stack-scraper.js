@@ -1,5 +1,6 @@
 var fs = require("fs");
 var path = require("path");
+var util = require("util");
 
 var _ = require("lodash");
 var async = require("async");
@@ -50,11 +51,17 @@ StackScraper.prototype = {
             throw "StackScraper: Please provide a path to store the XML files in.";
         }
 
-        this.loadScraperFile();
+        this.loadScraperFile(options);
     },
 
-    loadScraperFile: function() {
-        this.scraper = require(this.options.scraperFile)();
+    loadScraperFile: function(options) {
+        this.scraper = require(this.options.scraperFile)(options, this.mockCasper);
+    },
+
+    mockCasper: {
+        format: function() {
+            return util.format.apply(util, arguments);
+        }
     },
 
     download: function(callback) {
@@ -74,13 +81,18 @@ StackScraper.prototype = {
 
         var options = _.clone(this.options);
 
+        options.dirname = __dirname;
+
         var settings = _.extend(this.pageSettings,
             this.options.pageSettings,
             this.scraper.pageSettings);
 
         var spooky = new Spooky({
+            child: {
+                transport: "http"
+            },
             exec: {
-                file: __dirname + "/casper-bootstrap.js",
+                file: __dirname + "/src/casper-bootstrap.js",
                 options: options
             },
             casper: {
@@ -159,7 +171,7 @@ StackScraper.prototype = {
         }.bind(this));
     },
 
-    testURL: function(url, callback) {
+    scrapeURL: function(url, callback) {
         var tmpFile = "/tmp/" + (new Date).getTime() + Math.random();
 
         console.log("Downloading %s to %s", url, tmpFile);
@@ -172,8 +184,7 @@ StackScraper.prototype = {
                 var data = {
                     savedPage: tmpFile,
                     queuePos: 0,
-                    extract: [],
-                    noSave: true
+                    extract: []
                 };
 
                 this.scraper.scrape.forEach(function(level, pos) {
@@ -359,7 +370,7 @@ StackScraper.prototype = {
     },
 
     saveData: function(data, callback) {
-        if (data.noSave) {
+        if (this.options.noSave) {
             console.log("Final Data:", data);
             return callback();
         }
@@ -560,8 +571,6 @@ StackScraper.prototype = {
                 args.htmlDir || "./pages/");
             dirs.xmlDir = path.resolve(dirs.sourceDataRoot,
                 args.xmlDir || "./xml/");
-            dirs.mirrorDir = path.resolve(dirs.sourceDataRoot,
-                args.mirrorDir || "./mirror/");
 
             Object.keys(args.directories).forEach(function(dirName) {
                 dirs[dirName] = path.resolve(dirs.sourceDataRoot,
@@ -575,6 +584,10 @@ StackScraper.prototype = {
                 }
             });
 
+            // We don't want to make the mirror directory if it doesn't exist
+            dirs.mirrorDir = path.resolve(dirs.sourceDataRoot,
+                args.mirrorDir || "./mirror/");
+
             _.extend(args, dirs);
         }
 
@@ -585,6 +598,11 @@ StackScraper.prototype = {
     },
 
     run: function(args, callback) {
+        if (args.test || args.testURL) {
+            this.options.debug = true;
+            this.options.noSave = true;
+        }
+
         if (args["delete"]) {
             this.reset({}, callback);
         } else if (args.scrape) {
@@ -592,8 +610,7 @@ StackScraper.prototype = {
         } else if (args.process) {
             this.process({}, callback);
         } else if (args.testURL) {
-            this.options.debug = true;
-            this.testURL(args.testURL, callback);
+            this.scrapeURL(args.testURL, callback);
         } else {
             var startScrape = function() {
                 if (args.mirrorDir && fs.existsSync(args.mirrorDir)) {
@@ -603,7 +620,7 @@ StackScraper.prototype = {
                 }
             }.bind(this);
 
-            if (args.update) {
+            if (args.test || args.update) {
                 startScrape();
             } else {
                 stackScraper.reset({}, startScrape);
@@ -659,6 +676,11 @@ var cli = function(genOptions, done) {
     argparser.addArgument(["--test-url"], {
         help: "Test extraction against a specified URL.",
         dest: "testURL"
+    });
+
+    argparser.addArgument(["--test"], {
+        action: "storeTrue",
+        help: "Test scraping and extraction of a source."
     });
 
     var args = argparser.parseArgs();

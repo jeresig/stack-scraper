@@ -5,20 +5,14 @@ if (typeof casper === "undefined") {
     }
 }
 
-var fs = require("fs");
-
-var resolve = function(path) {
-    return fs.absolute(fs.workingDirectory + "/" + path);
-};
-
-var utils = require(resolve("./crawl.js"))(casper);
+var utils = require(options.dirname + "/src/crawl.js")(casper);
 
 // Load in the scraper file
 if (options.debug) {
     console.log("Loading: " + options.scraperFile);
 }
 
-var scraper = require(options.scraperFile)(casper);
+var scraper = require(options.scraperFile)(options, casper);
 
 utils.init(scraper, options);
 
