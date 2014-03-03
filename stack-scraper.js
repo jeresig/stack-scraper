@@ -371,8 +371,11 @@ StackScraper.prototype = {
 
     saveData: function(data, callback) {
         if (this.options.noSave) {
-            console.log("Final Data:", data);
-            return callback();
+            var dataModel = new this.options.model(data);
+            if (this.options.debug) {
+                console.log("Final Data:", dataModel);
+            }
+            return dataModel.validate(callback);
         }
 
         if (!data._id) {
@@ -490,7 +493,8 @@ StackScraper.prototype = {
                     var fullPath = path.concat(prop).join(".");
 
                     if (this.options.debug) {
-                        console.log("Updated:", fullPath, orig[prop], source[prop]);
+                        console.log("Updated:", fullPath, orig[prop],
+                            source[prop]);
                     }
 
                     orig[prop] = source[prop];
