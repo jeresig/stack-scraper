@@ -312,6 +312,10 @@ StackScraper.prototype = {
     },
 
     postProcess: function(data, callback) {
+        if (this.options.debug) {
+            console.log("Post Processing...");
+        }
+
         var fns = _.keys(this.options.postProcessors || {});
 
         async.reduce(fns, [data], function(datas, processorName, callback) {
@@ -509,10 +513,19 @@ StackScraper.prototype = {
     },
 
     dbFindById: function(id, callback) {
+        if (this.options.debug) {
+            console.log("Finding by ID:", id);
+        }
+
         this.options.model.findById(id, callback);
     },
 
     dbSave: function(data, callback) {
+        if (this.options.debug) {
+            console.log("Saving...");
+            console.log(data);
+        }
+
         this.setDataSource(data);
         this.setDataModified(data);
 
@@ -520,8 +533,12 @@ StackScraper.prototype = {
 
         obj.save(function(err, item) {
             if (!err) {
-                console.log("Saved (%s) %s", item._id,
+                console.log("SAVED (%s) %s", item._id,
                     this.options.debug ? JSON.stringify(item) : "");
+            } else {
+                console.log("ERROR Saving (%s) %s", data._id,
+                    JSON.stringify(data));
+                console.log(err)
             }
 
             callback(err);

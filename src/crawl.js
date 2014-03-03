@@ -252,7 +252,7 @@ module.exports = function(casper) {
 
             casper.options.waitTimeout = 30000;
 
-            actionQueue.delay = options.debug || options.runtests ? 0 : 5000;
+            actionQueue.delay = options.runtests ? 0 : 5000;
 
             casper.start();
             utils.nextQueueLevel(0);
