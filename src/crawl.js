@@ -200,7 +200,6 @@ module.exports = function(casper) {
                 this.groupEnd();
 
                 if (options.success) {
-                    //console.log("Success: " + options.success.toString());
                     options.success();
                 }
             }
