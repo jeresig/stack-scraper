@@ -75,7 +75,13 @@ StackScraper.prototype = {
 
             } else {
                 // Otherwise we need to keep processing the data
-                this.processData(data, next);
+                this.dbLog(data, function(err) {
+                    if (err) {
+                        return next(err);
+                    }
+
+                    this.processData(data, next);
+                });
             }
         }.bind(this), 1);
 
@@ -116,7 +122,7 @@ StackScraper.prototype = {
             }
         });
 
-        spooky.on("data", function(data) {
+        spooky.on("action", function(data) {
             processQueue.push(data);
         });
 
@@ -406,7 +412,7 @@ StackScraper.prototype = {
             console.log("Resetting.", filter);
         }
 
-        this.dbRemove(filter, callback);
+        this.dbRemoveLog(filter, callback);
     },
 
     processors: {
@@ -579,6 +585,15 @@ StackScraper.prototype = {
         this.options.model.remove(filter, callback);
     },
 
+    dbRemoveLog: function(filter, callback) {
+        this.options.logModel.remove(filter, callback);
+    },
+
+    dbLog: function(data, callback) {
+        console.log()
+        this.options.logModel.create(data, callback);
+    },
+
     setupDirs: function(args) {
         if (args.rootDataDir && args.type) {
             var dirs = {
@@ -625,7 +640,9 @@ StackScraper.prototype = {
         }
 
         if (args["delete"]) {
-            this.reset({}, callback);
+            this.dbRemove({}, function() {
+                this.dbRemoveLog({}, callback);
+            }.bind(this));
         } else if (args.scrape) {
             this.scrape({}, callback);
         } else if (args.process) {
@@ -641,10 +658,10 @@ StackScraper.prototype = {
                 }
             }.bind(this);
 
-            if (args.test || args.update) {
-                startScrape();
-            } else {
+            if (args.reset) {
                 this.reset({}, startScrape);
+            } else {
+                startScrape();
             }
         }
     }
@@ -679,9 +696,9 @@ var cli = function(genOptions, done) {
         help: "Process the results from the already-downloaded pages."
     });
 
-    argparser.addArgument(["--update"], {
+    argparser.addArgument(["--reset"], {
         action: "storeTrue",
-        help: "Force the existing entries to be updated rather than deleted first."
+        help: "Don't resume from where the last scrape left off."
     });
 
     argparser.addArgument(["--delete"], {

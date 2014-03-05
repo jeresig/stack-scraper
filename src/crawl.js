@@ -135,6 +135,7 @@ module.exports = function(casper) {
                 return;
             }
 
+            options.startTime = options.startTime || (new Date).getTime();
             options.running = true;
 
             if (this.delay) {
@@ -197,6 +198,12 @@ module.exports = function(casper) {
                     this.groupEnd();
                 }
             } else {
+                options.endTime = (new Date).getTime();
+                for (var prop in curQueue.data) {
+                    options[prop] = curQueue.data[prop];
+                }
+                casper.emit("action", options);
+
                 this.groupEnd();
 
                 if (options.success) {
@@ -327,10 +334,6 @@ module.exports = function(casper) {
             // Run Action Handlers
             for (var action in utils.actions) {
                 utils.actions[action](curQueue.data);
-            }
-
-            if (!options.back) {
-                casper.emit("data", curQueue.data);
             }
 
             // TODO: Handle when next or visit is run and no results
