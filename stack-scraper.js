@@ -75,13 +75,7 @@ StackScraper.prototype = {
 
             } else {
                 // Otherwise we need to keep processing the data
-                this.dbLog(data, function(err) {
-                    if (err) {
-                        return next(err);
-                    }
-
-                    this.processData(data, next);
-                });
+                this.processData(data, next);
             }
         }.bind(this), 1);
 
@@ -389,20 +383,25 @@ StackScraper.prototype = {
         }
 
         if (!data._id) {
-            this.dbSave(data, callback);
-            return;
+            return callback({msg: "No ID specified."});
         }
 
-        this.dbFindById(data._id, function(err, item) {
-            if (err || !item) {
-                this.dbSave(data, callback);
-                return;
+        this.dbLog(data, function(err) {
+            if (err) {
+                return callback(err);
             }
 
-            this.dbUpdate(item, data, function(err, data) {
-                callback(err, data);
-            });
-        }.bind(this));
+            this.dbFindById(data._id, function(err, item) {
+                if (err || !item) {
+                    this.dbSave(data, callback);
+                    return;
+                }
+
+                this.dbUpdate(item, data, function(err, data) {
+                    callback(err, data);
+                });
+            }.bind(this));
+        });
     },
 
     reset: function(filter, callback) {
