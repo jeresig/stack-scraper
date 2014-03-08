@@ -199,9 +199,11 @@ module.exports = function(casper) {
                 }
             } else {
                 options.endTime = (new Date).getTime();
-                for (var prop in curQueue.data) {
-                    options[prop] = curQueue.data[prop];
+
+                for (var prop in utils.curQueue.data) {
+                    options[prop] = utils.curQueue.data[prop];
                 }
+
                 casper.emit("action", options);
 
                 this.groupEnd();

@@ -39,7 +39,8 @@ StackScraper.prototype = {
             throw "StackScraper: Please provide a source name.";
         }
 
-        if (!this.options.scraperFile && !fs.existsSync(this.options.scraperFile)) {
+        if (!this.options.scraperFile &&
+                !fs.existsSync(this.options.scraperFile)) {
             throw "StackScraper: Please provide a path to a scraper file.";
         }
 
@@ -55,7 +56,8 @@ StackScraper.prototype = {
     },
 
     loadScraperFile: function(options) {
-        this.scraper = require(this.options.scraperFile)(options, this.mockCasper);
+        this.scraper = require(this.options.scraperFile)(options,
+            this.mockCasper);
     },
 
     mockCasper: {
@@ -117,6 +119,7 @@ StackScraper.prototype = {
         });
 
         spooky.on("action", function(data) {
+            console.log("ACTION", data)
             processQueue.push(data);
         });
 
@@ -225,8 +228,13 @@ StackScraper.prototype = {
         });
     },
 
-    processDoc: function(data, callback) {
-        var datas = [data];
+    processDoc: function(scrapeData, callback) {
+        var datas = [{
+            // NOTE: Anything else we need to pass in?
+            url: scrapeData.url,
+            // TODO: Remove the need for this
+            extract: scrapeData.extract
+        }];
 
         async.eachLimit(this.scraper.scrape, 1, function(queueLevel, callback) {
             var queuePos = this.scraper.scrape.indexOf(queueLevel);
@@ -243,7 +251,8 @@ StackScraper.prototype = {
                     return callback(null, [data]);
                 }
 
-                var xmlFile = path.resolve(this.options.xmlDir, pageID + ".xml");
+                var xmlFile = path.resolve(this.options.xmlDir,
+                    pageID + ".xml");
 
                 fileUtils.readXMLFile(xmlFile, function(err, xmlDoc) {
                     if (err) {
@@ -286,7 +295,21 @@ StackScraper.prototype = {
                         return callback(err);
                     }
 
-                    async.forEach(datas, this.saveData.bind(this), callback);
+                    scrapeData.data = datas.filter(function(data) {
+                        return !!data._id;
+                    });
+                    scrapeData.extracted = scrapeData.data.map(function(data) {
+                        return data._id;
+                    });
+
+                    this.dbLog(scrapeData, function(err) {
+                        if (err) {
+                            return callback(err);
+                        }
+
+                        async.forEach(datas, this.saveData.bind(this),
+                            callback);
+                    }.bind(this));
                 }.bind(this));
             }.bind(this), function(err, data) {
                 callback(err, data);
@@ -386,22 +409,16 @@ StackScraper.prototype = {
             return callback({msg: "No ID specified."});
         }
 
-        this.dbLog(data, function(err) {
-            if (err) {
-                return callback(err);
+        this.dbFindById(data._id, function(err, item) {
+            if (err || !item) {
+                this.dbSave(data, callback);
+                return;
             }
 
-            this.dbFindById(data._id, function(err, item) {
-                if (err || !item) {
-                    this.dbSave(data, callback);
-                    return;
-                }
-
-                this.dbUpdate(item, data, function(err, data) {
-                    callback(err, data);
-                });
-            }.bind(this));
-        });
+            this.dbUpdate(item, data, function(err, data) {
+                callback(err, data);
+            });
+        }.bind(this));
     },
 
     reset: function(filter, callback) {
@@ -589,7 +606,17 @@ StackScraper.prototype = {
     },
 
     dbLog: function(data, callback) {
-        console.log()
+        this.setDataSource(data);
+        data.type = this.options.model.modelName;
+
+        if (this.options.noSave) {
+            var dataModel = new this.options.logModel(data);
+            if (this.options.debug) {
+                console.log("Log Data:", dataModel);
+            }
+            return dataModel.validate(callback);
+        }
+
         this.options.logModel.create(data, callback);
     },
 
