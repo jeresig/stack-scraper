@@ -82,15 +82,19 @@ StackScraper.prototype = {
             })
             .on("close", function() {
                 queue.forEach(function(cur, i) {
-                    if (i < 1 || !cur.options.back) {
+                    if (i >= queue.length - 1 || cur.options.back) {
                         return;
                     }
 
-                    for (var p = i - 1; p >= 0; p--) {
-                        var prev = queue[p];
-                        if (prev.level === cur.level + 1) {
-                            prev.options.skip = true;
-                            cur.options.skip = true;
+                    for (var p = i + 1; p < queue.length; p++) {
+                        var next = queue[p];
+                        if (next.level === cur.level) {
+                            if (next.options.back) {
+                                delete next.options.back;
+                                for (var j = i; j < p; j++) {
+                                    queue[j].options.skip = true;
+                                }
+                            }
                             break;
                         }
                     }
@@ -559,7 +563,10 @@ StackScraper.prototype = {
                     }
 
                     orig[prop] = source[prop];
-                    orig.markModified(fullPath);
+
+                    if (orig.markModified) {
+                        orig.markModified(fullPath);
+                    }
                 }
             }
         }
@@ -638,7 +645,9 @@ StackScraper.prototype = {
 
     dbStreamLog: function(filter) {
         return this.options.logModel
-            .find(filter).stream();
+            .find(filter)
+            .sort({startTime: 1})
+            .stream();
     },
 
     dbRemoveLog: function(filter, callback) {
