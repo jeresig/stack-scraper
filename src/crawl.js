@@ -160,7 +160,8 @@ module.exports = function(casper) {
                             window.history.back();
                         });
                     } else {
-                        casper[options.action].apply(casper, options.args || []);
+                        casper[options.action].apply(casper,
+                            options.args || []);
                     }
 
                     // Watch for URL change and page load
@@ -192,7 +193,8 @@ module.exports = function(casper) {
 
                     // Add on an additonal "undo" operation
                     this._queue.unshift({
-                        action: "back"
+                        action: "back",
+                        log: false
                     });
                 } else {
                     this.groupEnd();
@@ -204,7 +206,9 @@ module.exports = function(casper) {
                     options[prop] = utils.curQueue.data[prop];
                 }
 
-                casper.emit("action", options);
+                if (options.log !== false) {
+                    casper.emit("action", options);
+                }
 
                 this.groupEnd();
 
@@ -263,7 +267,15 @@ module.exports = function(casper) {
             actionQueue.delay = options.runtests ? 0 : 5000;
 
             casper.start();
-            utils.nextQueueLevel(0);
+
+            // Support resuming from an existing queue of actions
+            if (utils.options.queue.length > 0) {
+                utils.options.queue.forEach(function(action) {
+                    actionQueue.queue(action);
+                });
+            } else {
+                utils.nextQueueLevel(0);
+            }
         },
 
         handleQueueLevel: function(options) {

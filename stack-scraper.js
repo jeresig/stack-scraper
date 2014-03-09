@@ -45,11 +45,13 @@ StackScraper.prototype = {
         }
 
         if (!this.options.htmlDir && !fs.existsSync(this.options.htmlDir)) {
-            throw "StackScraper: Please provide a path to store the HTML files in.";
+            throw "StackScraper: Please provide a path to store the HTML " +
+                "files in.";
         }
 
         if (!this.options.xmlDir && !fs.existsSync(this.options.xmlDir)) {
-            throw "StackScraper: Please provide a path to store the XML files in.";
+            throw "StackScraper: Please provide a path to store the XML " +
+                "files in.";
         }
 
         this.loadScraperFile(options);
@@ -67,6 +69,24 @@ StackScraper.prototype = {
     },
 
     download: function(callback) {
+        var queue = [];
+
+        this.dbStreamLog()
+            .on("data", function(data) {
+                if (data.action === "open") {
+                    queue = [data];
+                } else if (data.action === "back") {
+                    queue.pop();
+                } else {
+                    queue.push(data);
+                }
+            })
+            .on("close", function() {
+                this.startCasper(queue, callback);
+            }.bind(this));
+    },
+
+    startCasper: function(queue, callback) {
         console.log("Starting CasperJS...");
 
         var processQueue = async.queue(function(data, next) {
@@ -84,6 +104,7 @@ StackScraper.prototype = {
         var options = _.clone(this.options);
 
         options.dirname = __dirname;
+        options.queue = queue;
 
         var settings = _.extend(this.pageSettings,
             this.options.pageSettings,
@@ -119,7 +140,6 @@ StackScraper.prototype = {
         });
 
         spooky.on("action", function(data) {
-            console.log("ACTION", data)
             processQueue.push(data);
         });
 
@@ -601,6 +621,11 @@ StackScraper.prototype = {
         this.options.model.remove(filter, callback);
     },
 
+    dbStreamLog: function(filter) {
+        return this.options.logModel
+            .find(filter).stream();
+    },
+
     dbRemoveLog: function(filter, callback) {
         this.options.logModel.remove(filter, callback);
     },
@@ -654,8 +679,10 @@ StackScraper.prototype = {
         }
 
         if (args.scrapersDir && args.type) {
-            args.scrapersDir = path.resolve(__dirname, args.scrapersDir, args.type);
-            args.scraperFile = path.resolve(args.scrapersDir, args.source + ".js");
+            args.scrapersDir = path.resolve(__dirname, args.scrapersDir,
+                args.type);
+            args.scraperFile = path.resolve(args.scrapersDir,
+                args.source + ".js");
         }
     },
 
@@ -666,8 +693,11 @@ StackScraper.prototype = {
         }
 
         if (args["delete"]) {
-            this.dbRemove({}, function() {
-                this.dbRemoveLog({}, callback);
+            var filter = {};
+            this.setDataSource(filter);
+
+            this.dbRemove(filter, function() {
+                this.dbRemoveLog(filter, callback);
             }.bind(this));
         } else if (args.scrape) {
             this.scrape({}, callback);
@@ -714,7 +744,8 @@ var cli = function(genOptions, done) {
 
     argparser.addArgument(["--scrape"], {
         action: "storeTrue",
-        help: "Scrape and process the results from the already-downloaded pages."
+        help: "Scrape and process the results from the already-downloaded " +
+            "pages."
     });
 
     argparser.addArgument(["--process"], {
