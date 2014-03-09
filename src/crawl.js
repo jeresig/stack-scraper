@@ -3,18 +3,6 @@ var fs = require("fs");
 module.exports = function(casper) {
     var tmpDir = "/tmp/";
 
-    /*
-     * Events:
-     * - error
-     * - complete.error
-     * - load.started
-     * - load.failed
-     * - load.finished
-     * - page.error
-     * - timeout
-     * - url.changed
-     */
-
     casper.on("error", function() {
         console.log("error", JSON.stringify(arguments));
         actionQueue.reattempt();
@@ -138,8 +126,15 @@ module.exports = function(casper) {
             options.startTime = options.startTime || (new Date).getTime();
             options.running = true;
 
-            if (this.delay) {
-                this.log("Delaying for: " + this.delay + "ms.");
+            var delay = this.delay || 1;
+
+            // No need to delay if we're not doing anything
+            if (utils.queueOptions.skip === true) {
+                delay = 1;
+            }
+
+            if (delay > 1) {
+                this.log("Delaying for: " + delay + "ms.");
             }
 
             setTimeout(function() {
@@ -148,6 +143,13 @@ module.exports = function(casper) {
                 var args = (options.args || []).map(function(arg) {
                     return JSON.stringify(arg.path || arg);
                 }).join(", ");
+
+                if (utils.queueOptions.skip === true) {
+                    this.log((options.type || options.action) +
+                        "(Skipping)");
+                    actionQueue.complete(true);
+                    return;
+                }
 
                 this.log((options.type || options.action) +
                     "(" + args + ")");
@@ -169,7 +171,7 @@ module.exports = function(casper) {
                 } catch(e) {
                     this.reattempt();
                 }
-            }.bind(this), this.delay || 1);
+            }.bind(this), delay);
         },
 
         complete: function(pass) {
@@ -177,6 +179,8 @@ module.exports = function(casper) {
 
             options.failed = !pass;
             options.running = false;
+            options.level = utils.queuePos;
+            options.levelOptions = utils.queueOptions;
 
             this.log("Action complete: " +
                 (pass ? "Success." : "Failure."));
@@ -206,7 +210,7 @@ module.exports = function(casper) {
                     options[prop] = utils.curQueue.data[prop];
                 }
 
-                if (options.log !== false) {
+                if (options.log !== false && utils.queueOptions.log !== false) {
                     casper.emit("action", options);
                 }
 
@@ -268,17 +272,12 @@ module.exports = function(casper) {
 
             casper.start();
 
-            // Support resuming from an existing queue of actions
-            if (utils.options.queue.length > 0) {
-                utils.options.queue.forEach(function(action) {
-                    actionQueue.queue(action);
-                });
-            } else {
-                utils.nextQueueLevel(0);
-            }
+            utils.nextQueueLevel(0);
         },
 
         handleQueueLevel: function(options) {
+            utils.queueOptions = options;
+
             if (utils.debug) {
                 casper.log("Handling queue #" + utils.queuePos, "debug");
             }
@@ -427,6 +426,11 @@ module.exports = function(casper) {
                 utils.queuePos = 0;
             }
 
+            // Support resuming from an existing queue of actions
+            if (utils.replayQueueLevel()) {
+                return;
+            }
+
             utils.queuePos += posDiff;
             utils.curQueue = utils.queues[utils.queuePos];
 
@@ -449,6 +453,29 @@ module.exports = function(casper) {
             }
 
             utils.handleQueueLevel(options || {});
+        },
+
+        replayQueueLevel: function() {
+            var queue = utils.options.queue;
+
+            if (!queue || queue.length === 0) {
+                return false;
+            }
+
+            var oldQueue = utils.curQueue;
+            var levelCall = queue.shift();
+            utils.queuePos = levelCall.level;
+            utils.curQueue = utils.queues[utils.queuePos];
+
+            // We're staying in the same queue, wipe out the
+            // queues and continue.
+            if (oldQueue === utils.curQueue) {
+                utils.curQueue.visit = null;
+                utils.curQueue.next = null;
+            }
+
+            utils.handleQueueLevel(levelCall.options);
+            return true;
         },
 
         clickQueue: function(selector) {

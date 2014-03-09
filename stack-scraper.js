@@ -73,15 +73,29 @@ StackScraper.prototype = {
 
         this.dbStreamLog()
             .on("data", function(data) {
-                if (data.action === "open") {
-                    queue = [data];
-                } else if (data.action === "back") {
-                    queue.pop();
-                } else {
-                    queue.push(data);
-                }
+                var options = {
+                    level: data.level,
+                    options: data.levelOptions || {}
+                };
+                options.options.log = false;
+                queue.push(options);
             })
             .on("close", function() {
+                queue.forEach(function(cur, i) {
+                    if (i < 1 || !cur.options.back) {
+                        return;
+                    }
+
+                    for (var p = i - 1; p >= 0; p--) {
+                        var prev = queue[p];
+                        if (prev.level === cur.level + 1) {
+                            prev.options.skip = true;
+                            cur.options.skip = true;
+                            break;
+                        }
+                    }
+                });
+
                 this.startCasper(queue, callback);
             }.bind(this));
     },
@@ -121,7 +135,8 @@ StackScraper.prototype = {
             casper: {
                 logLevel: options.debug ? "debug" : "error",
                 verbose: true,
-                pageSettings: settings
+                pageSettings: settings,
+                exitOnError: false
             }
         });
 
