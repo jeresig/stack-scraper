@@ -74,6 +74,7 @@ StackScraper.prototype = {
         this.dbStreamLog()
             .on("data", function(data) {
                 var options = {
+                    _id: data._id,
                     level: data.level,
                     options: data.levelOptions || {}
                 };
@@ -100,6 +101,17 @@ StackScraper.prototype = {
                     }
                 });
 
+                if (this.options.debug) {
+                    console.log("Loading Scrape Queue:");
+                    queue.forEach(function(log, i) {
+                        if (i > 0 && queue[i - 1].level === log.level) {
+                            console.log("SAME", log.level)
+                        }
+                        console.log(log.level, log._id,
+                            JSON.stringify(log.options));
+                    });
+                }
+
                 this.startCasper(queue, callback);
             }.bind(this));
     },
@@ -115,7 +127,13 @@ StackScraper.prototype = {
 
             } else {
                 // Otherwise we need to keep processing the data
-                this.processData(data, next);
+                this.processData(data, function(err) {
+                    if (err) {
+                        console.log("ERROR Processing Data:",
+                            JSON.stringify(err), JSON.stringify(data));
+                    }
+                    next();
+                });
             }
         }.bind(this), 1);
 
@@ -330,14 +348,12 @@ StackScraper.prototype = {
                 }
 
                 this.postProcess(data, function(err, datas) {
-                    if (err) {
-                        return callback(err);
-                    }
-
-                    scrapeData.data = datas.filter(function(data) {
-                        return !!data._id;
+                    datas = datas.filter(function(data) {
+                        return !!(data && data._id);
                     });
-                    scrapeData.extracted = scrapeData.data.map(function(data) {
+
+                    scrapeData.data = datas;
+                    scrapeData.extracted = datas.map(function(data) {
                         return data._id;
                     });
 
@@ -350,9 +366,7 @@ StackScraper.prototype = {
                             callback);
                     }.bind(this));
                 }.bind(this));
-            }.bind(this), function(err, data) {
-                callback(err, data);
-            });
+            }.bind(this), callback);
         }.bind(this));
     },
 
@@ -746,6 +760,11 @@ StackScraper.prototype = {
         }
     }
 };
+
+// Bury broken connection errors coming from Spooky/Casper/Phantom
+process.on("uncaughtException", function(err) {
+    console.error("ERROR", err);
+}.bind(this));
 
 var cli = function(genOptions, done) {
     var ArgumentParser = require("argparse").ArgumentParser;
