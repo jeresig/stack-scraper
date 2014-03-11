@@ -27,7 +27,8 @@
     "iconv": "~2.0.7",
     "spooky": "git://github.com/jeresig/SpookyJS.git#exec2",
     "findit": "~1.1.0",
-    "argparse": "~0.1.15"
+    "argparse": "~0.1.15",
+    "graceful-fs": "^2.0.2"
   },
   "devDependencies": {
     "express": "~3.4.8"
