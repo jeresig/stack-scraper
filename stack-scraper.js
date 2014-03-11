@@ -71,7 +71,7 @@ StackScraper.prototype = {
     download: function(callback) {
         var queue = [];
 
-        this.dbStreamLog()
+        this.dbStreamLog({source: this.options.source})
             .on("data", function(data) {
                 var options = {
                     _id: data._id,
@@ -244,6 +244,7 @@ StackScraper.prototype = {
                 var data = {
                     savedPage: tmpFile,
                     queuePos: 0,
+                    url: url,
                     extract: []
                 };
 
