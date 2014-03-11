@@ -26,7 +26,9 @@ module.exports = function(casper) {
             console.log("load.started");
         }
 
-        responses = [];
+        if (actionQueue.requestStarted) {
+            responses = [];
+        }
     });
 
     casper.on("load.failed", function() {
@@ -37,6 +39,12 @@ module.exports = function(casper) {
     });
 
     casper.on("load.finished", function(status) {
+        if (!actionQueue.requestStarted) {
+            return;
+        }
+
+        actionQueue.requestStarted = false;
+
         var response;
 
         responses.some(function(res) {
@@ -155,6 +163,8 @@ module.exports = function(casper) {
                     "(" + args + ")");
 
                 try {
+                    this.requestStarted = true;
+
                     if (typeof options.action === "function") {
                         options.action();
                     } else if (options.action === "back") {
@@ -605,7 +615,7 @@ module.exports = function(casper) {
         },
 
         selector: function(selector, num) {
-            return selector.indexOf("/") === 0 ?
+            return selector.indexOf("/") >= 0 ?
                 { type: "xpath", path: num != null ?
                     "(" + selector + ")[" + (num + 1) + "]" :
                     selector } :
