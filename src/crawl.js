@@ -8,11 +8,6 @@ module.exports = function(casper) {
         actionQueue.reattempt();
     });
 
-    casper.on("complete.error", function() {
-        console.log("complete.error");
-        // TODO: Do we need to do anything here?
-    });
-
     casper.on("page.error", function() {
         console.log("page.error", JSON.stringify(arguments));
         // TODO: Do we need to do anything here?
@@ -29,13 +24,6 @@ module.exports = function(casper) {
         if (actionQueue.requestStarted) {
             responses = [];
         }
-    });
-
-    casper.on("load.failed", function() {
-        if (utils.debug) {
-            console.log("load.failed");
-        }
-        actionQueue.reattempt();
     });
 
     casper.on("load.finished", function(status) {
