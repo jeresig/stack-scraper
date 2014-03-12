@@ -1,5 +1,6 @@
 var fs = require("graceful-fs");
 var cp = require("child_process");
+var crypto = require("crypto");
 
 var libxml = require("libxmljs");
 var Iconv = require("iconv").Iconv;
