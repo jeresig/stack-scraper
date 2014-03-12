@@ -349,14 +349,16 @@ StackScraper.prototype = {
                 }
 
                 this.postProcess(data, function(err, datas) {
-                    datas = datas.filter(function(data) {
-                        return !!(data && data._id);
-                    });
+                    if (datas) {
+                        datas = datas.filter(function(data) {
+                            return !!(data && data._id);
+                        });
 
-                    scrapeData.data = datas;
-                    scrapeData.extracted = datas.map(function(data) {
-                        return data._id;
-                    });
+                        scrapeData.data = datas;
+                        scrapeData.extracted = datas.map(function(data) {
+                            return data._id;
+                        });
+                    }
 
                     this.dbLog(scrapeData, function(err) {
                         if (err) {
@@ -765,6 +767,7 @@ StackScraper.prototype = {
 // Bury broken connection errors coming from Spooky/Casper/Phantom
 process.on("uncaughtException", function(err) {
     console.error("ERROR", err);
+    console.error(err.stack);
 }.bind(this));
 
 var cli = function(genOptions, done) {

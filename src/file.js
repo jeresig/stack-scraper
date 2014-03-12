@@ -1,4 +1,4 @@
-var fs = require("fs");
+var fs = require("graceful-fs");
 var cp = require("child_process");
 
 var libxml = require("libxmljs");

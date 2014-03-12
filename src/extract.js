@@ -1,3 +1,5 @@
+var _ = require("lodash");
+
 module.exports = {
     extract: function(xmlDoc, selectors, data, accept) {
         if (typeof selectors === "function") {
@@ -51,8 +53,11 @@ module.exports = {
             ret = ret.map(function(val) {
                 return this.getValue(val, data, process);
             }.bind(this)).filter(function(val) {
-                return val || undefined;
+                return !!val;
             });
+
+            // Remove duplicate values
+            ret = _.uniq(ret);
         }
 
         return ret;
