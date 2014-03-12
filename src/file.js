@@ -11,10 +11,15 @@ var Iconv = require("iconv").Iconv;
 
 module.exports = {
     md5File: function(file, callback) {
-        cp.execFile("md5", ["-q", file], null, function(err, md5) {
-            md5 = md5.toString().replace(/\s*/g, "");
-            callback(md5);
-        });
+        var hash = crypto.createHash("md5");
+        hash.setEncoding("hex");
+
+        fs.createReadStream(file)
+            .on("end", function() {
+                hash.end();
+                callback(hash.read());
+            })
+            .pipe(hash);
     },
 
     condCopyFile: function(from, to, callback) {
