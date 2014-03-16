@@ -46,6 +46,7 @@ module.exports = {
             "--hide-comments", "yes",
             "--add-xml-decl", "yes",
             "--doctype", "transitional",
+            "--quote-nbsp", "no",
             "--show-warnings", "0",
             "--force-output", "yes"
         ]);

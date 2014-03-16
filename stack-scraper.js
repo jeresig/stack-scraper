@@ -313,8 +313,8 @@ StackScraper.prototype = {
                     pageID + ".xml");
 
                 fileUtils.readXMLFile(xmlFile, function(err, xmlDoc) {
-                    if (err) {
-                        return callback(err);
+                    if (err || (xmlDoc.errors && xmlDoc.errors.length > 0)) {
+                        return callback(err || xmlDoc.errors);
                     }
 
                     if (queueLevel.root) {
@@ -351,8 +351,12 @@ StackScraper.prototype = {
                 this.postProcess(data, function(err, datas) {
                     if (datas) {
                         datas = datas.filter(function(data) {
-                            return !!(data && data._id);
-                        });
+                            var pass = !!(data && data._id);
+                            if (data && !pass && this.options.debug) {
+                                console.log("Error: Entry does not have _id:", data);
+                            }
+                            return pass;
+                        }.bind(this));
 
                         scrapeData.data = datas;
                         scrapeData.extracted = datas.map(function(data) {
