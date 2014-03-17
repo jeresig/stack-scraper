@@ -313,7 +313,13 @@ StackScraper.prototype = {
                     pageID + ".xml");
 
                 fileUtils.readXMLFile(xmlFile, function(err, xmlDoc) {
-                    if (err || (xmlDoc.errors && xmlDoc.errors.length > 0)) {
+                    if (xmlDoc.errors && xmlDoc.errors.length > 0) {
+                        if (this.options.debug) {
+                            console.log("XML Tidy Error:", xmlDoc.errors);
+                        }
+                    }
+
+                    if (err) {
                         return callback(err || xmlDoc.errors);
                     }
 
@@ -329,7 +335,7 @@ StackScraper.prototype = {
                         extractUtils.extract(xmlDoc, queueLevel.extract, data);
                         callback(null, [data]);
                     }
-                });
+                }.bind(this));
             }.bind(this), function(err, _datas) {
                 datas = _.flatten(datas);
                 callback(err);
