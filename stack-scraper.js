@@ -236,7 +236,13 @@ StackScraper.prototype = {
 
         console.log("Downloading %s to %s", url, tmpFile);
 
-        request(url)
+        request({
+            url: url,
+            headers: {
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) " +
+                    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.117 Safari/537.36"
+            }
+        })
             .pipe(fs.createWriteStream(tmpFile))
             .on("close", function() {
                 console.log("Done.");
@@ -337,7 +343,7 @@ StackScraper.prototype = {
                     }
                 }.bind(this));
             }.bind(this), function(err, _datas) {
-                datas = _.flatten(datas);
+                datas = _.flatten(_datas);
                 callback(err);
             });
         }.bind(this), function(err) {
