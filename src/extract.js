@@ -68,7 +68,7 @@ module.exports = {
             .replace(/#([\w_-]+)/g, "[@id='$1']")
             .replace(/\.([\w_-]+)(\/|\[| |$)/g,
                 "[contains(@class,'$1')]$2")
-            .replace(/^([^.\/])/, "//$1")
+            .replace(/^([^.\/\(])/, "//$1")
             .replace(/\/\[/g, "/*[");
     },
 
