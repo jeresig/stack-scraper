@@ -843,18 +843,25 @@ var cli = function(genOptions, done) {
 
     var args = argparser.parseArgs();
 
+    var stackScraper = new StackScraper();
+    var options = _.extend({}, args);
+    options = _.extend(options, genOptions(options, stackScraper));
+
     var scrapeSource = function(source, callback) {
-        var stackScraper = new StackScraper();
-        var options = _.extend({}, args, {source: source});
-        options = _.extend(options, genOptions(options, stackScraper));
-        stackScraper.init(options);
-        stackScraper.run(options, callback);
+        console.log("Scraping:", source);
+        var scrapeOptions = _.clone(options);
+        scrapeOptions.source = source;
+        stackScraper.init(scrapeOptions);
+        stackScraper.run(scrapeOptions, callback);
     };
 
-    if (args.source === "*") {
+    if (options.scrapersDir && args.source === "all") {
         var typeDir = path.resolve(options.scrapersDir, args.type);
         fs.readdir(typeDir, function(err, sources) {
-            async.mapLimit(sources, 1, scrapeSource, done);
+            sources = sources.map(function(source) {
+                return /([^\/]+).js$/.exec(source)[1];
+            });
+            async.eachLimit(sources, 1, scrapeSource, done);
         });
     } else {
         scrapeSource(args.source, done);
