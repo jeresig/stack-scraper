@@ -296,6 +296,8 @@ StackScraper.prototype = {
         var datas = [{
             // NOTE: Anything else we need to pass in?
             url: scrapeData.url,
+            // Can be used by mirrored pages
+            savedPage: scrapeData.savedPage,
             // TODO: Remove the need for this
             extract: scrapeData.extract
         }];
@@ -482,6 +484,8 @@ StackScraper.prototype = {
         }
 
         this.dbFindById(data._id, function(err, item) {
+            delete data.savedPage;
+
             if (err || !item) {
                 this.dbSave(data, callback);
                 return;
@@ -525,7 +529,6 @@ StackScraper.prototype = {
 
                     fileUtils.condCopyFile(savedPage, htmlFile,
                         function() {
-                            delete data.savedPage;
                             fileUtils.convertXML(htmlFile, xmlFile, encoding,
                                 function(err) {
                                     callback(err, data);
