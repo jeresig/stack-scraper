@@ -5,6 +5,7 @@ var util = require("util");
 var _ = require("lodash");
 var async = require("async");
 var Spooky = require("spooky");
+var glob = require("glob");
 var findit = require("findit");
 var request = require("request");
 
@@ -209,26 +210,42 @@ StackScraper.prototype = {
         var exclude = this.mirrorExclude.concat(
             this.options.mirrorExclude || []);
 
-        var finder = findit(dir);
-
-        finder.on("file", function(file, stat) {
-            // Ignore images
-            if (exclude.some(function(ext) {
-                return file.indexOf(ext) >= 0;
-            })) {
-                return;
-            }
-
+        var addFile = function(file) {
             queue.push({
                 savedPage: file,
+                savedFile: file.replace(dir + "/", ""),
                 queuePos: 0,
                 extract: [1]
             });
-        });
+        };
 
-        finder.on("end", function() {
+        var done = function() {
             async.eachLimit(queue, 1, this.processData.bind(this), callback);
-        }.bind(this));
+        }.bind(this);
+
+        if (this.scraper.files) {
+            glob(this.scraper.files, {cwd: dir}, function(err, files) {
+                files.forEach(function(file) {
+                    addFile(path.join(dir, file));
+                });
+                done();
+            });
+        } else {
+            var finder = findit(dir);
+
+            finder.on("file", function(file, stat) {
+                // Ignore images
+                if (exclude.some(function(ext) {
+                    return file.indexOf(ext) >= 0;
+                })) {
+                    return;
+                }
+
+                addFile(file);
+            });
+
+            finder.on("end", done);
+        }
     },
 
     scrapeURL: function(url, callback) {
@@ -298,6 +315,7 @@ StackScraper.prototype = {
             url: scrapeData.url,
             // Can be used by mirrored pages
             savedPage: scrapeData.savedPage,
+            savedFile: scrapeData.savedFile,
             // TODO: Remove the need for this
             extract: scrapeData.extract
         }];

@@ -28,7 +28,8 @@
     "spooky": "git://github.com/jeresig/SpookyJS.git#exec2",
     "findit": "~1.1.0",
     "argparse": "~0.1.15",
-    "graceful-fs": "^2.0.2"
+    "graceful-fs": "^2.0.2",
+    "glob": "^3.2.9"
   },
   "devDependencies": {
     "express": "~3.4.8"
