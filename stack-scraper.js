@@ -224,12 +224,19 @@ StackScraper.prototype = {
         }.bind(this);
 
         if (this.scraper.files) {
-            glob(this.scraper.files, {cwd: dir}, function(err, files) {
-                files.forEach(function(file) {
-                    addFile(path.join(dir, file));
+            var globs = this.scraper.files;
+            if (typeof globs === "string") {
+                globs = [globs];
+            }
+
+            async.eachLimit(globs, 1, function(globExpr, callback) {
+                glob(globExpr, {cwd: dir}, function(err, files) {
+                    files.forEach(function(file) {
+                        addFile(path.join(dir, file));
+                    });
+                    callback();
                 });
-                done();
-            });
+            }, done);
         } else {
             var finder = findit(dir);
 
