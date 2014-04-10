@@ -79,7 +79,7 @@ module.exports = {
             val = process(val, data) || "";
         }
 
-        return !val || val instanceof Array ?
+        return !val || typeof val === "object" ?
             val :
             String(val).trim().replace(/\s+/g, " ");
     },
