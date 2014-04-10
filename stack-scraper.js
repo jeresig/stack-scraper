@@ -79,9 +79,15 @@ StackScraper.prototype = {
                     level: data.level,
                     options: data.levelOptions || {}
                 };
-                options.options.log = false;
+                // Don't log if we don't care about the results
+                // We do care if we were expecting data but it didn't
+                // come out, for some reason.
+                if (data.extracted.length > 0 ||
+                    !this.scraper.scrape[data.level].extract) {
+                    options.options.log = false;
+                }
                 queue.push(options);
-            })
+            }.bind(this))
             .on("close", function() {
                 queue.forEach(function(cur, i) {
                     if (i >= queue.length - 1 || cur.options.back) {
