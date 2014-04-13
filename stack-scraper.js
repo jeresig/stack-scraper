@@ -516,6 +516,7 @@ StackScraper.prototype = {
 
         this.dbFindById(data._id, function(err, item) {
             delete data.savedPage;
+            delete data.savedFile;
 
             if (err || !item) {
                 this.dbSave(data, callback);
