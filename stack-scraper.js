@@ -638,6 +638,17 @@ StackScraper.prototype = {
                 }
             }
         }
+
+        for (var prop in orig) {
+            if (orig[prop] && !(prop in source)) {
+                orig[prop] = null;
+
+                if (orig.markModified) {
+                    var fullPath = path.concat(prop).join(".");
+                    orig.markModified(fullPath);
+                }
+            }
+        }
     },
 
     dbFind: function(filter, callback) {
@@ -687,6 +698,9 @@ StackScraper.prototype = {
         var delta = item.$__delta();
 
         if (delta) {
+            console.log(JSON.stringify(delta))
+            callback();
+            return;
             this.setDataSource(item);
             this.setDataModified(item);
 
