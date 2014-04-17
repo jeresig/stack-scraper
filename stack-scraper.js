@@ -615,40 +615,21 @@ StackScraper.prototype = {
         data.extracted = true;
     },
 
-    merge: function(orig, source, path) {
-        path = path || [];
+    merge: function(item, data) {
+        var obj = new this.options.model(data).toJSON();
+        obj.created = item.created;
 
-        for (var prop in source) {
-            if (typeof orig[prop] === "object" && orig[prop]) {
-                this.merge(orig[prop], source[prop], [prop]);
-            } else {
-                if (orig[prop] !== source[prop]) {
-                    var fullPath = path.concat(prop).join(".");
-
-                    if (this.options.debug) {
-                        console.log("Updated:", fullPath, orig[prop],
-                            source[prop]);
-                    }
-
-                    orig[prop] = source[prop];
-
-                    if (orig.markModified) {
-                        orig.markModified(fullPath);
-                    }
-                }
+        for (var prop in obj) {
+            if (obj.hasOwnProperty(prop) && obj[prop] &&
+                typeof obj[prop] === "object" && obj[prop].length > 0) {
+                obj[prop].forEach(function(subDoc, i) {
+                    if (item[prop] && item[prop][i])
+                    subDoc._id = item[prop][i]._id;
+                });
             }
         }
 
-        for (var prop in orig) {
-            if (orig[prop] && !(prop in source)) {
-                orig[prop] = null;
-
-                if (orig.markModified) {
-                    var fullPath = path.concat(prop).join(".");
-                    orig.markModified(fullPath);
-                }
-            }
-        }
+        item.set(obj);
     },
 
     dbFind: function(filter, callback) {
@@ -698,9 +679,6 @@ StackScraper.prototype = {
         var delta = item.$__delta();
 
         if (delta) {
-            console.log(JSON.stringify(delta))
-            callback();
-            return;
             this.setDataSource(item);
             this.setDataModified(item);
 
