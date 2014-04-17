@@ -623,8 +623,9 @@ StackScraper.prototype = {
             if (obj.hasOwnProperty(prop) && obj[prop] &&
                 typeof obj[prop] === "object" && obj[prop].length > 0) {
                 obj[prop].forEach(function(subDoc, i) {
-                    if (item[prop] && item[prop][i])
-                    subDoc._id = item[prop][i]._id;
+                    if (item[prop] && item[prop][i]) {
+                        subDoc._id = item[prop][i]._id;
+                    }
                 });
             }
         }
