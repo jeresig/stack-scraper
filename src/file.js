@@ -40,6 +40,9 @@ module.exports = {
             html = (new Iconv(encoding, "UTF-8")).convert(html);
         }
 
+        // Remove any script tags first (to fix any weird escaping)
+        html = html.toString("utf8").replace(/<script[\s\S]*?<\/script>/ig, "");
+
         var tidy = cp.spawn("tidy", [
             "-utf8",
             "-asxml",
