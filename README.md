@@ -46,34 +46,22 @@ Stack Scraper is a system for efficiently scraping information from complex web 
 * `--test`: Test scraping and extraction of a source.
 * `--test-url`: Test extraction against a specified URL.
 
-```
-/* Model Props:
- * - source
- * - extracted
- * - extract
- * - pageID
- * - modified
- * - created
- */
+**Initialization Properties:**
 
-/* Options:
- * - source *
- * - model *
- * - postProcessors
- * - pageSettings
- * - mirrorExclude
- * - scraperFile *
- * - htmlDir
- * - xmlDir
- * - sourceName
- * - debug
- */
-```
+* `rootDataDir` (String): A full path to the root directory where downloaded data is stored. (See "File System" for more information.)
+* `scrapersDir` (String): A full path to the directory where scraper `.js` files are stored. (See "Scrapers" for more information.)
+* `directories` (Object<String>, optional): A key-value set of names of directories paired with the relative path to the directory. These directories will be created inside the individual source directory inside the `rootDataDir`. (See "File System" for more information.)
+* `model` (Function): A function representing the model in which extracted data will be stored. (See "Datastore and Data Models" for more information.)
+* `logModel` (Function): A function representing the log model for storing information about an in-progress site scrape. (See "Datastore and Data Models" for more information.)
+* `postProcessors` (Object, optional): An object whose keys are the names of model properties which should be processed and values are functions through which the data will be processed. (See "Post-Processors" for more information.)
 
 ## Requirements
 
+### Scrapers
 
-### Datastore
+### File System
+
+### Datastore and Data Models
 
 MongoDB + Mongoose
 
@@ -85,3 +73,16 @@ MongoDB + Mongoose
     dbLog(data:Object, callback)
     dbStreamLog(filter:Object) -> Stream
     dbRemoveLog(filter:Object, callback)
+
+Data model properties:
+
+    /* Model Props:
+     * - source
+     * - extracted
+     * - extract
+     * - pageID
+     * - modified
+     * - created
+     */
+
+### Post-Processors
