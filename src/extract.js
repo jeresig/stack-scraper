@@ -37,13 +37,23 @@ module.exports = {
                 return;
             }
 
-            var texts = this.getAllText(xmlDoc, this.cssToXPath(selector));
+            selector.split(/\s*&&\s*/).forEach(function(selector) {
+                var texts = this.getAllText(xmlDoc, this.cssToXPath(selector));
 
-            if (texts.length > 0) {
-                ret = multi ?
-                    texts :
-                    texts.join(" ");
-            }
+                if (texts.length > 0) {
+                    if (ret) {
+                        if (multi) {
+                            ret = ret.concat(texts);
+                        } else {
+                            ret += " " + texts.join(" ");
+                        }
+                    } else {
+                        ret = multi ?
+                            texts :
+                            texts.join(" ");
+                    }
+                }
+            }.bind(this));
         }.bind(this));
 
         if (typeof ret === "string") {
