@@ -2,6 +2,16 @@
 
 Stack Scraper is a system for efficiently scraping information from complex web sites in a repeatable way, exporting directly to a data store.
 
+Stack Scraper is good at collecting lots of semi-structured data from complicated, or even poorly-written, web sites in a repeatable manner.
+
+## Features
+
+* Scraping operations can be paused and resumed at a later time.
+* Fault tolerant.
+* Easy to scrape complex web sites, even ones with forms, pop-ups, JavaScript-based UIs, or other complexities.
+* No one-to-one relationship between URLs and data collected. Multiple sources of data can be collected from a single page and the ID of the data can be handled arbitrarily (for example, the ID for a page could actually be the name of an image on the page, or the MD5 of that image, or something else entirely).
+* Data for a single record can be collected, and compiled, from multiple, consecutive web pages. For example, let's say some data is on a page and then more data is within a popup. Both of those pages can be scraped and be combined into a single record.
+
 ## Usage
 
     var mongoose = require("mongoose");
@@ -74,15 +84,32 @@ MongoDB + Mongoose
     dbStreamLog(filter:Object) -> Stream
     dbRemoveLog(filter:Object, callback)
 
-Data model properties:
+A sample Mongoose schema:
 
-    /* Model Props:
-     * - source
-     * - extracted
-     * - extract
-     * - pageID
-     * - modified
-     * - created
-     */
+    var SampleSchema = mongoose.schema({
+        // UUID of the data (Recommended format: SOURCE/UUID)
+        _id: String,
+
+        // The date that this item was created
+        created: {type: Date, "default": Date.now},
+
+        // The date that this item was updated
+        modified: Date,
+
+        // The source of the information (the name of the scraper)
+        source: String,
+
+        // UUID of the source page. (Format: PAGEMD5)
+        pageID: String,
+
+        // Full URL of the original page from where the data came
+        url: String,
+
+        // An array of page IDs from which data was extracted
+        extract: [String],
+
+        // Determine if data was actually extracted from the page
+        extracted: Boolean
+    });
 
 ### Post-Processors
