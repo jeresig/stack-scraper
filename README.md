@@ -14,30 +14,7 @@ Stack Scraper is good at collecting lots of semi-structured data from complicate
 
 ## Usage
 
-    var mongoose = require("mongoose");
-    
-    require("stack-scraper").cli(function(args, stackScraper) {
-        return {
-            rootDataDir: __dirname + "/data/",
-            scrapersDir: __dirname + "/scrapers/",
-            model: mongoose.model(args.type),
-            logModel: mongoose.model("scrapelog"),
-            postProcessors: require("./processing/" + args.type)(
-                stackScraper),
-            directories: {
-                imagesDir: "./images/",
-                thumbsDir: "./thumbs/",
-                scaledDir: "./scaled/"
-            }
-        };
-    }, function(err) {
-        if (err) {
-            console.error(err);
-        } else {
-            console.log("DONE");
-        }
-        process.exit(0);
-    });
+See the `example` directory for a full sample scraper.
 
 ## Command-line Interface
 
@@ -83,33 +60,5 @@ MongoDB + Mongoose
     dbLog(data:Object, callback)
     dbStreamLog(filter:Object) -> Stream
     dbRemoveLog(filter:Object, callback)
-
-A sample Mongoose schema:
-
-    var SampleSchema = mongoose.schema({
-        // UUID of the data (Recommended format: SOURCE/UUID)
-        _id: String,
-
-        // The date that this item was created
-        created: {type: Date, "default": Date.now},
-
-        // The date that this item was updated
-        modified: Date,
-
-        // The source of the information (the name of the scraper)
-        source: String,
-
-        // UUID of the source page. (Format: PAGEMD5)
-        pageID: String,
-
-        // Full URL of the original page from where the data came
-        url: String,
-
-        // An array of page IDs from which data was extracted
-        extract: [String],
-
-        // Determine if data was actually extracted from the page
-        extracted: Boolean
-    });
 
 ### Post-Processors
