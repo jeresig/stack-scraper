@@ -4,19 +4,30 @@ Stack Scraper is a system for efficiently scraping information from complex web 
 
 Stack Scraper is good at collecting lots of semi-structured data from complicated, or even poorly-written, web sites in a repeatable manner.
 
-## Features
+Features
+========
 
 * Scraping operations can be paused and resumed at a later time.
 * Fault tolerant.
 * Easy to scrape complex web sites, even ones with forms, pop-ups, JavaScript-based UIs, or other complexities.
 * No one-to-one relationship between URLs and data collected. Multiple sources of data can be collected from a single page and the ID of the data can be handled arbitrarily (for example, the ID for a page could actually be the name of an image on the page, or the MD5 of that image, or something else entirely).
 * Data for a single record can be collected, and compiled, from multiple, consecutive web pages. For example, let's say some data is on a page and then more data is within a popup. Both of those pages can be scraped and be combined into a single record.
+* The process for crawling, downloading, extracting data, and processing the data are all de-coupled. They can all be run back-to-back, or one-at-a-time, or even repeatedly.
 
-## Usage
+Guide
+=====
 
-See the `example` directory for a full sample scraper.
+*See the `example` directory for a full sample scraper.*
 
-## Command-line Interface
+Stack Scraper provides the code to write a simple command-line application for downloading semi-structured data from complex web sites. However you'll need to take a number of things into consideration when you're building your `stack-scraper` implementation, namely:
+
+* **Command-line Interface** The implementation of the command-line utilty and where various utility files will be located.
+* **Scrapers** An implementation of a basic scraper.
+* **File System** Where downloaded files (html, images, etc.) will live.
+* **Datastore and Data Models** Where extracted data and scrape logs will be stored, and how.
+* **Post-Processors** If any post-processing on the extracted data will be completed and how to do it.
+
+### Command-line Interface
 
 **Arguments:**
 
@@ -41,8 +52,6 @@ See the `example` directory for a full sample scraper.
 * `model` (Function): A function representing the model in which extracted data will be stored. (See "Datastore and Data Models" for more information.)
 * `logModel` (Function): A function representing the log model for storing information about an in-progress site scrape. (See "Datastore and Data Models" for more information.)
 * `postProcessors` (Object, optional): An object whose keys are the names of model properties which should be processed and values are functions through which the data will be processed. (See "Post-Processors" for more information.)
-
-## Requirements
 
 ### Scrapers
 
