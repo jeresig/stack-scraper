@@ -7,15 +7,10 @@ require("../stack-scraper").cli(function(args, stackScraper) {
     return {
         rootDataDir: __dirname + "/data/",
         scrapersDir: __dirname + "/scrapers/",
-        model: mongoose.model("Data"),
+        model: mongoose.model(args.type),
         logModel: mongoose.model("ScrapeLog"),
         postProcessors: require("./processing/" + args.type)(
-            stackScraper),
-        directories: {
-            imagesDir: "./images/",
-            thumbsDir: "./thumbs/",
-            scaledDir: "./scaled/"
-        }
+            stackScraper)
     };
 }, function(err) {
     if (err) {
