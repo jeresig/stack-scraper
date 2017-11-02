@@ -1,9 +1,11 @@
-var fs = require("graceful-fs");
-var cp = require("child_process");
-var crypto = require("crypto");
+'use strict';
 
-var libxml = require("libxmljs");
-var Iconv = require("iconv").Iconv;
+const fs = require("graceful-fs");
+const cp = require("child_process");
+const crypto = require("crypto");
+
+const libxml = require("libxmljs");
+const {Iconv} = require("iconv");
 
 /* TODO PERF:
  * - Frontload reading in all XML files.
@@ -11,20 +13,20 @@ var Iconv = require("iconv").Iconv;
  */
 
 module.exports = {
-    md5File: function(file, callback) {
-        var hash = crypto.createHash("md5");
+    md5File(file, callback) {
+        const hash = crypto.createHash("md5");
         hash.setEncoding("hex");
 
         fs.createReadStream(file)
-            .on("end", function() {
+            .on("end", () => {
                 hash.end();
                 callback(hash.read());
             })
             .pipe(hash);
     },
 
-    condCopyFile: function(from, to, callback) {
-        fs.exists(to, function(exists) {
+    condCopyFile(from, to, callback) {
+        fs.exists(to, exists => {
             if (exists) {
                 return callback();
             }
@@ -35,7 +37,7 @@ module.exports = {
         });
     },
 
-    tidyHTML: function(html, outputFile, encoding, callback) {
+    tidyHTML(html, outputFile, encoding, callback) {
         if (encoding) {
             html = (new Iconv(encoding, "UTF-8")).convert(html);
         }
@@ -43,16 +45,25 @@ module.exports = {
         // Remove any script tags first (to fix any weird escaping)
         html = html.toString("utf8").replace(/<script[\s\S]*?<\/script>/ig, "");
 
-        var tidy = cp.spawn("tidy", [
-            "-utf8",
-            "-asxml",
-            "--hide-comments", "yes",
-            "--add-xml-decl", "yes",
-            "--doctype", "transitional",
-            "--quote-nbsp", "no",
-            "--show-warnings", "0",
-            "--force-output", "yes"
-        ]);
+        const tidy = cp.spawn(
+            "tidy",
+            [
+                "-utf8",
+                "-asxml",
+                "--hide-comments",
+                "yes",
+                "--add-xml-decl",
+                "yes",
+                "--doctype",
+                "transitional",
+                "--quote-nbsp",
+                "no",
+                "--show-warnings",
+                "0",
+                "--force-output",
+                "yes",
+            ]
+        );
 
         tidy.stdout
             .pipe(fs.createWriteStream(outputFile))
@@ -62,29 +73,29 @@ module.exports = {
         tidy.stdin.end();
     },
 
-    convertXML: function(htmlFile, xmlFile, encoding, callback) {
-        fs.exists(xmlFile, function(exists) {
+    convertXML(htmlFile, xmlFile, encoding, callback) {
+        fs.exists(xmlFile, exists => {
             if (exists) {
                 return callback();
             }
 
-            fs.readFile(htmlFile, function(err, html) {
+            fs.readFile(htmlFile, (err, html) => {
                 if (err) {
                     return callback(err);
                 }
 
                 this.tidyHTML(html, xmlFile, encoding, callback);
-            }.bind(this));
-        }.bind(this));
+            });
+        });
     },
 
-    readXMLFile: function(xmlFile, callback) {
-        fs.exists(xmlFile, function(exists) {
+    readXMLFile(xmlFile, callback) {
+        fs.exists(xmlFile, exists => {
             if (!exists) {
-                return callback({msg: "File does not exist: " + xmlFile});
+                return callback({msg: `File does not exist: ${xmlFile}`});
             }
 
-            fs.readFile(xmlFile, "utf8", function(err, xmlData) {
+            fs.readFile(xmlFile, "utf8", (err, xmlData) => {
                 // Strip out XMLNS to make XPath queries sane
                 xmlData = xmlData.replace(/xmlns=\s*".*?"/g, "");
 
@@ -92,5 +103,5 @@ module.exports = {
                 callback(null, libxml.parseXml(xmlData));
             });
         });
-    }
+    },
 };

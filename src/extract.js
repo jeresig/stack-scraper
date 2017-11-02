@@ -1,16 +1,18 @@
-var _ = require("lodash");
+'use strict';
+
+const {uniq} = require("lodash");
 
 module.exports = {
-    extract: function(xmlDoc, selectors, data, accept) {
+    extract(xmlDoc, selectors, data, accept) {
         if (typeof selectors === "function") {
             return selectors(data, xmlDoc);
         }
 
-        for (var prop in selectors) {
-            var type = selectors[prop],
-                fixedProp = prop.replace(/\[\]/, ""),
-                multi = prop !== fixedProp,
-                val;
+        for (const prop in selectors) {
+            const type = selectors[prop];
+            const fixedProp = prop.replace(/\[\]/, "");
+            const multi = prop !== fixedProp;
+            let val;
 
             if (typeof type === "string") {
                 val = this.snag(xmlDoc, data, multi, type);
@@ -19,8 +21,7 @@ module.exports = {
             } else if (typeof type === "boolean") {
                 val = type;
             } else {
-                val = this.snag.apply(this,
-                    [xmlDoc, data, multi].concat(type));
+                val = this.snag(xmlDoc, data, multi, ...type);
             }
 
             if (val != null) {
@@ -29,23 +30,24 @@ module.exports = {
         }
     },
 
-    snag: function(xmlDoc, data, multi, selector, process) {
-        var ret;
+    snag(xmlDoc, data, multi, selector, process) {
+        let ret;
 
-        selector.split(/\s*\|\|\s*/).forEach(function(selector) {
+        selector.split(/\s*\|\|\s*/).forEach(selector => {
             if (ret != null) {
                 return;
             }
 
-            selector.split(/\s*&&\s*/).forEach(function(selector) {
-                var texts = this.getAllText(xmlDoc, this.cssToXPath(selector));
+            selector.split(/\s*&&\s*/).forEach(selector => {
+                const texts = this.getAllText(xmlDoc,
+                    this.cssToXPath(selector));
 
                 if (texts.length > 0) {
                     if (ret) {
                         if (multi) {
                             ret = ret.concat(texts);
                         } else {
-                            ret += " " + texts.join(" ");
+                            ret += ` ${texts.join(" ")}`;
                         }
                     } else {
                         ret = multi ?
@@ -53,27 +55,25 @@ module.exports = {
                             texts.join(" ");
                     }
                 }
-            }.bind(this));
-        }.bind(this));
+            });
+        });
 
         if (typeof ret === "string") {
             ret = this.getValue(ret, data, process) || undefined;
 
         } else if (ret) {
-            ret = ret.map(function(val) {
-                return this.getValue(val, data, process);
-            }.bind(this)).filter(function(val) {
-                return !!val;
-            });
+            ret = ret
+                .map(val => this.getValue(val, data, process))
+                .filter(val => !!val);
 
             // Remove duplicate values
-            ret = _.uniq(ret);
+            ret = uniq(ret);
         }
 
         return ret;
     },
 
-    cssToXPath: function(selector) {
+    cssToXPath(selector) {
         return selector
             .replace(/#([\w_-]+)/g, "[@id='$1']")
             .replace(/\.([\w_-]+)(\/|\[| |$)/g,
@@ -82,7 +82,7 @@ module.exports = {
             .replace(/\/\[/g, "/*[");
     },
 
-    getValue: function(val, data, process) {
+    getValue(val, data, process) {
         val = val.trim();
 
         if (process) {
@@ -94,12 +94,12 @@ module.exports = {
             String(val).trim().replace(/\s+/g, " ");
     },
 
-    getText: function(node) {
-        var text = "";
+    getText(node) {
+        let text = "";
 
         if (node.nodeType === 1) {
-            var childNodes = node.childNodes;
-            for (var i = 0, l = childNodes.length; i < l; i++) {
+            const childNodes = node.childNodes;
+            for (let i = 0, l = childNodes.length; i < l; i++) {
                 text += this.getText(childNodes[i]);
             }
         } else {
@@ -109,11 +109,10 @@ module.exports = {
         return text;
     },
 
-    getAllText: function(xmlDoc, selector) {
-        var results = xmlDoc.find(selector.path || selector);
+    getAllText(xmlDoc, selector) {
+        const results = xmlDoc.find(selector.path || selector);
 
-        return (results || []).map(function(item) {
-            return item.text ? item.text() : item.value();
-        });
-    }
+        return (results || [])
+            .map(item => (item.text ? item.text() : item.value()));
+    },
 };

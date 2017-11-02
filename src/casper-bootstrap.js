@@ -1,3 +1,4 @@
+'use strict';
 if (typeof casper === "undefined") {
     console.log("This script must be run using `casperjs`.");
     if (typeof process !== "undefined") {
@@ -5,14 +6,14 @@ if (typeof casper === "undefined") {
     }
 }
 
-var utils = require(options.dirname + "/src/crawl.js")(casper);
+const utils = require(`${options.dirname}/src/crawl.js`)(casper);
 
 // Load in the scraper file
 if (options.debug) {
-    console.log("Loading: " + options.scraperFile);
+    console.log(`Loading: ${options.scraperFile}`);
 }
 
-var scraper = require(options.scraperFile)(options, casper);
+const scraper = require(options.scraperFile)(options, casper);
 
 utils.init(scraper, options);
 

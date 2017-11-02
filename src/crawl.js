@@ -1,22 +1,23 @@
-var fs = require("fs");
+'use strict';
+const fs = require("fs");
 
 module.exports = function(casper) {
-    var tmpDir = "/tmp/";
+    const tmpDir = "/tmp/";
 
-    casper.on("error", function() {
+    casper.on("error", () => {
         console.log("error", JSON.stringify(arguments));
         actionQueue.reattempt();
     });
 
-    casper.on("page.error", function() {
+    casper.on("page.error", () => {
         console.log("page.error", JSON.stringify(arguments));
         // TODO: Do we need to do anything here?
         actionQueue.reattempt();
     });
 
-    var responses;
+    let responses;
 
-    casper.on("load.started", function() {
+    casper.on("load.started", () => {
         if (utils.debug) {
             console.log("load.started");
         }
@@ -26,16 +27,16 @@ module.exports = function(casper) {
         }
     });
 
-    casper.on("load.finished", function(status) {
+    casper.on("load.finished", status => {
         if (!actionQueue.requestStarted) {
             return;
         }
 
         actionQueue.requestStarted = false;
 
-        var response;
+        let response;
 
-        responses.some(function(res) {
+        responses.some(res => {
             if (!res.redirectURL) {
                 response = res;
                 return true;
@@ -59,7 +60,7 @@ module.exports = function(casper) {
         }
     });
 
-    casper.on("resource.received", function(res) {
+    casper.on("resource.received", res => {
         if (utils.debug) {
             console.log("page.resource.received");
         }
@@ -69,51 +70,49 @@ module.exports = function(casper) {
         }
     });
 
-    casper.on("timeout", function() {
+    casper.on("timeout", () => {
         if (utils.debug) {
             console.log("timeout");
         }
         actionQueue.reattempt();
     });
 
-    casper.on("url.changed", function() {
+    casper.on("url.changed", () => {
         if (utils.debug) {
             console.log("url.changed");
         }
         actionQueue.current().undo = true;
     });
 
-    var actionQueue = {
+    const actionQueue = {
         _queue: [],
-
         delay: 5000,
-
         running: false,
 
-        current: function() {
+        current() {
             return this._queue[0];
         },
 
         indent: "    ",
         indentLevel: 0,
 
-        log: function(msg) {
+        log(msg) {
             console.log(Array(this.indentLevel + 1).join(this.indent) + msg);
         },
 
-        group: function(msg) {
+        group(msg) {
             if (msg) {
                 this.log(msg);
             }
             this.indentLevel += 1;
         },
 
-        groupEnd: function() {
+        groupEnd() {
             this.indentLevel -= 1;
         },
 
-        exec: function() {
-            var options = this.current();
+        exec() {
+            const options = this.current();
 
             if (!options || options.running) {
                 return;
@@ -122,7 +121,7 @@ module.exports = function(casper) {
             options.startTime = options.startTime || (new Date).getTime();
             options.running = true;
 
-            var delay = this.delay || 1;
+            let delay = this.delay || 1;
 
             // No need to delay if we're not doing anything
             if (utils.queueOptions.skip === true) {
@@ -130,25 +129,23 @@ module.exports = function(casper) {
             }
 
             if (delay > 1) {
-                this.log("Delaying for: " + delay + "ms.");
+                this.log(`Delaying for: ${delay}ms.`);
             }
 
-            setTimeout(function() {
-                this.group(">> " + casper.getCurrentUrl());
+            setTimeout(() => {
+                this.group(`>> ${casper.getCurrentUrl()}`);
 
-                var args = (options.args || []).map(function(arg) {
-                    return JSON.stringify(arg.path || arg);
-                }).join(", ");
+                const args = (options.args || [])
+                    .map(arg => JSON.stringify(arg.path || arg))
+                    .join(", ");
 
                 if (utils.queueOptions.skip === true) {
-                    this.log((options.type || options.action) +
-                        "(Skipping)");
+                    this.log(`${options.type || options.action}(Skipping)`);
                     actionQueue.complete(true);
                     return;
                 }
 
-                this.log((options.type || options.action) +
-                    "(" + args + ")");
+                this.log(`${options.type || options.action}(${args})`);
 
                 try {
                     this.requestStarted = true;
@@ -156,32 +153,31 @@ module.exports = function(casper) {
                     if (typeof options.action === "function") {
                         options.action();
                     } else if (options.action === "back") {
-                        casper.evaluate(function() {
+                        casper.evaluate(() => {
                             window.history.back();
                         });
                     } else {
-                        casper[options.action].apply(casper,
-                            options.args || []);
+                        const args = options.args || [];
+                        casper[options.action](...args);
                     }
 
                     // Watch for URL change and page load
                     // If that fails then log as failure and re-attempt
-                } catch(e) {
+                } catch (e) {
                     this.reattempt();
                 }
-            }.bind(this), delay);
+            }, delay);
         },
 
-        complete: function(pass) {
-            var options = this._queue.shift();
+        complete(pass) {
+            const options = this._queue.shift();
 
             options.failed = !pass;
             options.running = false;
             options.level = utils.queuePos;
             options.levelOptions = utils.queueOptions;
 
-            this.log("Action complete: " +
-                (pass ? "Success." : "Failure."));
+            this.log(`Action complete: ${pass ? "Success." : "Failure."}`);
 
             if (options.failed) {
                 if (options.undo) {
@@ -196,7 +192,7 @@ module.exports = function(casper) {
                     // Add on an additonal "undo" operation
                     this._queue.unshift({
                         action: "back",
-                        log: false
+                        log: false,
                     });
                 } else {
                     this.groupEnd();
@@ -204,7 +200,7 @@ module.exports = function(casper) {
             } else {
                 options.endTime = (new Date).getTime();
 
-                for (var prop in utils.curQueue.data) {
+                for (const prop in utils.curQueue.data) {
                     options[prop] = utils.curQueue.data[prop];
                 }
 
@@ -223,15 +219,15 @@ module.exports = function(casper) {
             this.exec();
         },
 
-        reattempt: function() {
-            var options = this.current();
+        reattempt() {
+            const options = this.current();
 
             options.attempts = (options.attempts || 0) + 1;
 
             if (options.attempts < 3) {
                 // Log out re-attempt
-                this.log("Error running command, re-attempt #" +
-                    options.attempts);
+                this.log(`Error running command, re-attempt ` +
+                    `#${options.attempts}`);
 
                 this.complete(false);
             } else {
@@ -242,27 +238,25 @@ module.exports = function(casper) {
             }
         },
 
-        queue: function(options) {
+        queue(options) {
             // action, type, args, complete
             this._queue.push(options);
             this.exec();
-        }
+        },
     };
 
-    var utils = {
-        init: function(scraper, options) {
+    const utils = {
+        init(scraper, options) {
             utils.options = options;
             utils.debug = options.debug;
 
-            utils.queues = scraper.scrape.map(function(scraper) {
-                return {
-                    next: null,
-                    visit: null,
-                    data: {},
-                    count: 0,
-                    scraper: scraper
-                };
-            });
+            utils.queues = scraper.scrape.map(scraper => ({
+                next: null,
+                visit: null,
+                data: {},
+                count: 0,
+                scraper,
+            }));
 
             casper.options.waitTimeout = 30000;
 
@@ -273,20 +267,20 @@ module.exports = function(casper) {
             utils.nextQueueLevel(0);
         },
 
-        handleQueueLevel: function(options) {
+        handleQueueLevel(options) {
             utils.queueOptions = options;
 
             if (utils.debug) {
-                casper.log("Handling queue #" + utils.queuePos, "debug");
+                casper.log(`Handling queue #${utils.queuePos}`, "debug");
             }
 
-            var curQueue = utils.curQueue;
-            var scraper = curQueue.scraper;
+            const curQueue = utils.curQueue;
+            const scraper = curQueue.scraper;
 
             if (scraper.start && !curQueue.started) {
                 curQueue.started = true;
 
-                var runAgain = function() {
+                const runAgain = function() {
                     // Run the queue again, after starting
                     utils.nextQueueLevel(0);
                 };
@@ -299,13 +293,13 @@ module.exports = function(casper) {
                     actionQueue.queue({
                         action: "open",
                         args: [scraper.start],
-                        success: runAgain
+                        success: runAgain,
                     });
                 } else if (typeof scraper.start === "function") {
                     actionQueue.queue({
                         type: "open",
                         action: scraper.start,
-                        success: runAgain
+                        success: runAgain,
                     });
                 }
 
@@ -315,13 +309,13 @@ module.exports = function(casper) {
             if (!options.back) {
                 curQueue.count += 1;
 
-                var indent = Array(utils.queuePos + 1).join("  ") + "[";
+                let indent = `${Array(utils.queuePos + 1).join("  ")}[`;
                 if ("pos" in options) {
-                    indent += (options.pos + 1) + "/";
+                    indent += `${options.pos + 1}/`;
                 }
                 if (utils.debug) {
-                    casper.echo(indent + curQueue.count + "] " +
-                        casper.getCurrentUrl());
+                    casper.echo(`${indent + curQueue.count}] ` +
+                        `${casper.getCurrentUrl()}`);
                 }
             }
 
@@ -329,29 +323,29 @@ module.exports = function(casper) {
             curQueue.data = {};
 
             if (utils.queuePos > 0) {
-                var prevData = utils.queues[utils.queuePos - 1].data;
-                for (var data in prevData) {
+                const prevData = utils.queues[utils.queuePos - 1].data;
+                for (const data in prevData) {
                     curQueue.data[data] = prevData[data];
                 }
             }
 
             // Run Handlers
-            for (var handler in utils.handlers) {
+            for (const handler in utils.handlers) {
                 if (handler in scraper) {
                     utils.handlers[handler](scraper[handler]);
                 }
             }
 
             // Run Action Handlers
-            for (var action in utils.actions) {
+            for (const action in utils.actions) {
                 utils.actions[action](curQueue.data);
             }
 
             // TODO: Handle when next or visit is run and no results
             // come in. Should it be re-tried?
 
-            var visitQueue = curQueue.visit;
-            var nextQueue = curQueue.next;
+            const visitQueue = curQueue.visit;
+            const nextQueue = curQueue.next;
 
             // Is there nothing to visit?
             if (curQueue.visitCount === 0) {
@@ -367,7 +361,7 @@ module.exports = function(casper) {
 
                 actionQueue.group();
 
-                var visit = visitQueue.shift();
+                const visit = visitQueue.shift();
                 // TODO: Get POS
 
                 visit.success = function() {
@@ -383,7 +377,7 @@ module.exports = function(casper) {
                     casper.log("Next queue page...", "info");
                 }
 
-                var next = nextQueue.shift();
+                const next = nextQueue.shift();
 
                 next.success = function(pos) {
                     // Run the same queue level again
@@ -395,7 +389,7 @@ module.exports = function(casper) {
             // We're done!
             } else {
                 if (utils.debug) {
-                    casper.log("Completing queue #" + utils.queuePos, "debug");
+                    casper.log(`Completing queue #${utils.queuePos}`, "debug");
                 }
 
                 if (utils.queuePos > 0) {
@@ -403,11 +397,12 @@ module.exports = function(casper) {
 
                     actionQueue.queue({
                         action: "back",
-                        success: function() {
+
+                        success() {
                             actionQueue.groupEnd();
                             actionQueue.groupEnd();
                             utils.nextQueueLevel(-1, {back: true});
-                        }
+                        },
                     });
 
                 } else {
@@ -419,7 +414,7 @@ module.exports = function(casper) {
             }
         },
 
-        nextQueueLevel: function(posDiff, options) {
+        nextQueueLevel(posDiff, options) {
             if (!utils.queuePos) {
                 utils.queuePos = 0;
             }
@@ -453,15 +448,15 @@ module.exports = function(casper) {
             utils.handleQueueLevel(options || {});
         },
 
-        replayQueueLevel: function() {
-            var queue = utils.options.queue;
+        replayQueueLevel() {
+            const queue = utils.options.queue;
 
             if (!queue || queue.length === 0) {
                 return false;
             }
 
-            var oldQueue = utils.curQueue;
-            var levelCall = queue.shift();
+            const oldQueue = utils.curQueue;
+            const levelCall = queue.shift();
             utils.queuePos = levelCall.level;
             utils.curQueue = utils.queues[utils.queuePos];
 
@@ -476,49 +471,48 @@ module.exports = function(casper) {
             return true;
         },
 
-        clickQueue: function(selector) {
+        clickQueue(selector) {
             // Generate a list of functions which, when executed
             // will visit the given URL and .then() the callback
-            var num = casper.evaluate(function(selector) {
-                return __utils__.findAll(selector).length;
-            }, utils.selector(selector));
+            const num = casper.evaluate(
+                selector => __utils__.findAll(selector).length,
+                utils.selector(selector)
+            );
 
-            var actions = [];
+            const actions = [];
 
-            for (var i = 0; i < num; i++) {
+            for (let i = 0; i < num; i++) {
                 actions.push({
                     action: "click",
-                    args: [utils.selector(selector, i)]
+                    args: [utils.selector(selector, i)],
                 });
             }
 
             return actions;
         },
 
-        urlQueue: function(urls) {
+        urlQueue(urls) {
             // Generate a list of functions which, when executed
             // will visit the given URL and .then() the callback
-            return urls.map(function(url) {
-                return {
-                    action: "open",
-                    args: [url]
-                };
-            });
+            return urls.map(url => ({
+                action: "open",
+                args: [url],
+            }));
         },
 
         actions: {
-            setQueuePos: function(data) {
+            setQueuePos(data) {
                 data.queuePos = utils.queuePos;
             },
 
-            setURL: function(data) {
+            setURL(data) {
                 data.url = casper.getCurrentUrl();
             },
 
-            savePage: function(data) {
+            savePage(data) {
                 // TODO: Handle alternative file types (such as JSON or XML?)
-                var id = (new Date).getTime() + "" + Math.random();
-                var tmpFile = tmpDir + id + ".html";
+                const id = `${(new Date).getTime()}${Math.random()}`;
+                const tmpFile = `${tmpDir + id}.html`;
                 fs.write(tmpFile, casper.getHTML(), "w");
 
                 if (data) {
@@ -526,12 +520,12 @@ module.exports = function(casper) {
                 }
 
                 return tmpFile;
-            }
+            },
         },
 
         handlers: {
-            set: function(data) {
-                for (var name in data) {
+            set(data) {
+                for (const name in data) {
                     utils.curQueue.data[name] =
                         typeof data[name] === "function" ?
                             data[name](utils.curQueue.data) :
@@ -539,8 +533,8 @@ module.exports = function(casper) {
                 }
             },
 
-            extract: function(selectors, origData) {
-                var data = utils.curQueue.data;
+            extract(selectors, origData) {
+                const data = utils.curQueue.data;
 
                 if (!data.extract) {
                     data.extract = [];
@@ -550,7 +544,7 @@ module.exports = function(casper) {
                 data.extract[utils.queuePos] = 1;
             },
 
-            urls: function(urls) {
+            urls(urls) {
                 if (utils.curQueue.next) {
                     return;
                 }
@@ -558,7 +552,7 @@ module.exports = function(casper) {
                 utils.curQueue.next = utils.urlQueue(urls);
             },
 
-            next: function(selector) {
+            next(selector) {
                 if (utils.curQueue.next) {
                     return;
                 }
@@ -569,12 +563,12 @@ module.exports = function(casper) {
                 } else if (typeof selector === "function") {
                     utils.curQueue.next = [{
                         type: "next",
-                        action: selector
+                        action: selector,
                     }];
                 }
             },
 
-            visit: function(selector) {
+            visit(selector) {
                 if (utils.curQueue.visit) {
                     return;
                 }
@@ -585,30 +579,32 @@ module.exports = function(casper) {
                 } else if (typeof selector === "function") {
                     utils.curQueue.visit = [{
                         type: "visit",
-                        action: selector
+                        action: selector,
                     }];
                 }
 
                 utils.curQueue.visitCount = utils.curQueue.visit.length;
-            }
+            },
         },
 
-        searchURLs: function(opt) {
-            var urls = [];
-            var inc = opt.inc || 1;
-            for (var i = opt.start || 1; i <= opt.end; i += inc) {
+        searchURLs(opt) {
+            const urls = [];
+            const inc = opt.inc || 1;
+            for (let i = opt.start || 1; i <= opt.end; i += inc) {
                 urls.push(opt.url.replace(/%s/, i));
             }
             return utils.urlQueue(urls);
         },
 
-        selector: function(selector, num) {
-            return selector.indexOf("/") >= 0 ?
-                { type: "xpath", path: num != null ?
-                    "(" + selector + ")[" + (num + 1) + "]" :
-                    selector } :
-                selector;
-        }
+        selector(selector, num) {
+            return (selector.indexOf("/") >= 0 ? {
+                type: "xpath",
+
+                path: num != null ?
+                    `(${selector})[${num + 1}]` :
+                    selector,
+            } : selector);
+        },
     };
 
     return utils;

@@ -1,40 +1,34 @@
-var assert = require("assert");
-var express = require("express");
+"use strict";
 
-argparser.addArgument(["--runtests"], {
-    action: "storeTrue",
-    help: "Run tests."
-});
+const assert = require("assert");
+const util = require("util");
+const fs = require("fs");
 
-argparser.addArgument(["--saveresults"], {
-    action: "storeTrue",
-    help: "Save the test results."
-});
+const express = require("express");
+const {ArgumentParser} = require("argparse");
+const {omit} = require("lodash");
 
-var cleanTestResults = function(datas) {
-    return datas.map(function(item) {
-        var result = _.omit(item, ["_id", "created", "modified"]);
+const cleanTestResults = function(datas) {
+    return datas.map((item) => {
+        const result = omit(item, ["_id", "created", "modified"]);
         if (result.artists) {
-            result.artists = result.artists.map(function(artist) {
-                return _.omit(artist, "_id");
-            });
+            result.artists = result.artists
+                .map((artist) => omit(artist, "_id"));
         }
         return result;
-    }).sort(function(a, b) {
-        return a.pageID.localeCompare(b.pageID);
-    });
-}
+    }).sort((a, b) => a.pageID.localeCompare(b.pageID));
+};
 
-var compareTestData = function(actual, expected, callback) {
+const compareTestData = function(actual, expected, callback) {
     actual = cleanTestResults(actual);
     expected = cleanTestResults(expected);
 
     assert.equal(actual.length, expected.length, "Equal number of results");
 
-    expected.forEach(function(expectedItem, i) {
-        var actualItem = actual[i];
+    expected.forEach((expectedItem, i) => {
+        const actualItem = actual[i];
 
-        for (var prop in expectedItem) {
+        for (const prop in expectedItem) {
             assert.deepEqual(actualItem[prop], expectedItem[prop],
                 util.format("Mis-match of '%s' in: %s %s", prop,
                     JSON.stringify(actualItem),
@@ -45,23 +39,22 @@ var compareTestData = function(actual, expected, callback) {
     callback();
 };
 
-var testData = function(callback) {
-    var testFile = __dirname + "/tests/" + curSite + ".json";
-
-    fs.readFile(testFile, function(err, testData) {
+const testData = function(curSite, callback) {
+    fs.readFile(scraperDataFile, (err, testData) => {
         if (err && !args.saveresults) {
-            console.log("Error loading tests: Re-run with --saveresults");
+            console.log("Error loading test data: Re-run with --saveresults");
             return callback();
         }
 
-        curSchema.find({source: curSite}).lean(true).exec(function(err, datas) {
+        curSchema.find({source: curSite}).lean(true).exec((err, datas) => {
             if (err) {
                 callback(err);
             } else {
                 if (args.saveresults) {
-                    fs.writeFile(testFile, JSON.stringify(datas), callback);
+                    fs.writeFile(scraperDataFile,
+                        JSON.stringify(datas), callback);
                 } else {
-                    testData = JSON.parse(testData.toString())
+                    testData = JSON.parse(testData.toString());
                     compareTestData(datas, testData, callback);
                 }
             }
@@ -69,69 +62,64 @@ var testData = function(callback) {
     });
 };
 
-if (args.runtests) {
-    var scraperDir = site.env.resolve(__dirname + "/scrapers/" +
-        args.type + "/");
+const argparser = new ArgumentParser();
 
-    fs.readdir(scraperDir, function(err, sites) {
-        sites = sites.filter(function(site) {
-            return site.indexOf("_test.js") >= 0;
-        }).map(function(site) {
-            return site.replace(".js", "");
-        });
+argparser.addArgument(["--saveresults"], {
+    action: "storeTrue",
+    help: "Save the test results.",
+});
 
-        async.mapLimit(sites, 1, initSite, function(err) {
-            if (err) {
-                return callback(err);
-            }
-            testData(callback);
-        });
+argparser.addArgument(["scraperTestFile"], {
+    help: "The scraper test file to run.",
+});
+
+const args = argparser.parseArgs();
+
+const {scraperTestFile} = args;
+const scraperDataFile = `${scraperTestFile}on`;
+
+const scraper = require(scraperTestFile)();
+
+if (scraper.type === "server") {
+    const staticDir = `${__dirname}/${scraper.source}`;
+    const app = express.createServer();
+
+    let errors = 0;
+
+    // Used to make sure that simple redirects are handled
+    app.get("/redirect/:page", (req, res) => {
+        errors += 1;
+        if (errors >= 2) {
+            res.redirect(`/${req.params.page}`);
+        } else {
+            res.send(500);
+        }
     });
+
+    // Used to make sure that complex, slow, redirects work
+    app.get("/redirect1/:page", (req, res) => {
+        setTimeout(() => res.redirect(`/redirect2/${req.params.page}`), 6000);
+    });
+
+    app.get("/redirect2/:page", (req, res) => {
+        setTimeout(() => res.redirect(`/${req.params.page}`), 6000);
+    });
+
+    // Delay the load of an individual page
+    app.get("/page4.html", (req, res) => {
+        setTimeout(() => {
+            fs.readFile(`${staticDir}/page4.html`, (err, data) => {
+                res.header("Content-type", "text/html");
+                res.send(data);
+            });
+        }, 6000);
+    });
+
+    // Load everything else statically
+    app.use("/", express.static(staticDir));
+
+    app.listen(9876);
 }
+// TODO: Handle Mirror
 
-if (args.runtests) {
-    if (scraper.type === "server") {
-        var staticDir = __dirname + "/tests/" + scraper.source;
-        var app = express.createServer();
-
-        var errors = 0;
-
-        // Used to make sure that simple redirects are handled
-        app.get("/redirect/:page", function(req, res) {
-            errors += 1;
-            if (errors >= 2) {
-                res.redirect("/" + req.params.page);
-            } else {
-                res.send(500);
-            }
-        });
-
-        // Used to make sure that complex, slow, redirects work
-        app.get("/redirect1/:page", function(req, res) {
-            setTimeout(function() {
-                res.redirect("/redirect2/" + req.params.page);
-            }, 6000);
-        });
-        app.get("/redirect2/:page", function(req, res) {
-            setTimeout(function() {
-                res.redirect("/" + req.params.page);
-            }, 6000);
-        });
-
-        // Delay the load of an individual page
-        app.get("/page4.html", function(req, res) {
-            setTimeout(function() {
-                fs.readFile(staticDir + "/page4.html", function(err, data) {
-                    res.header("Content-type", "text/html");
-                    res.send(data);
-                });
-            }, 6000);
-        });
-
-        // Load everything else statically
-        app.use("/", express.static(staticDir));
-
-        app.listen(9876);
-    }
-    // TODO: Handle Mirror
-}
+testData(scraper.source, () => {});
