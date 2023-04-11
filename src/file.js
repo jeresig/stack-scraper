@@ -4,7 +4,7 @@ const fs = require("graceful-fs");
 const cp = require("child_process");
 const crypto = require("crypto");
 
-const libxml = require("libxmljs");
+const {DOMParser} = require("xmldom");
 const {Iconv} = require("iconv");
 
 /* TODO PERF:
@@ -100,7 +100,8 @@ module.exports = {
                 xmlData = xmlData.replace(/xmlns=\s*".*?"/g, "");
 
                 // TODO: Catch any errors when parsing the XML
-                callback(null, libxml.parseXml(xmlData));
+                const doc = new DOMParser().parseFromString(xmlData, "text/xml");
+                callback(null, doc);
             });
         });
     },

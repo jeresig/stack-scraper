@@ -1,6 +1,7 @@
 'use strict';
 
 const {uniq} = require("lodash");
+const xpath = require("xpath");
 
 module.exports = {
     extract(xmlDoc, selectors, data, accept) {
@@ -95,24 +96,14 @@ module.exports = {
     },
 
     getText(node) {
-        let text = "";
-
-        if (node.nodeType === 1) {
-            const childNodes = node.childNodes;
-            for (let i = 0, l = childNodes.length; i < l; i++) {
-                text += this.getText(childNodes[i]);
-            }
-        } else {
-            text += node.nodeValue;
-        }
-
-        return text;
+        return node.textContent;
     },
 
     getAllText(xmlDoc, selector) {
-        const results = xmlDoc.find(selector.path || selector);
+        const results = xpath.select(selector.path || selector, xmlDoc);
 
         return (results || [])
-            .map(item => (item.text ? item.text() : item.value()));
+            .map(item => (typeof item.textContent !== "undefined" ?
+                 item.textContent : item.value));
     },
 };

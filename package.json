@@ -25,12 +25,13 @@
     "findit": "2.0.0",
     "glob": "7.1.2",
     "graceful-fs": "4.1.11",
-    "iconv": "2.3.0",
-    "libxmljs": "0.18.7",
+    "iconv": "2.3.5",
     "lodash": "4.17.4",
     "request": "2.83.0",
     "rimraf": "2.6.2",
-    "spooky": "git://github.com/jeresig/SpookyJS.git#exec2"
+    "spooky": "git://github.com/jeresig/SpookyJS.git#exec2",
+    "xmldom": "^0.6.0",
+    "xpath": "^0.0.32"
   },
   "devDependencies": {
     "express": "4.16.2"

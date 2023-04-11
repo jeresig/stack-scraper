@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env node
 
 "use strict";
 
@@ -7,7 +7,7 @@ const path = require("path");
 const fs = require("graceful-fs");
 const async = require("async");
 
-const StackScraper = require("./src/stack-scraper.js");
+const StackScraper = require("../src/stack-scraper.js");
 
 // Bury broken connection errors coming from Spooky/Casper/Phantom
 process.on("uncaughtException", err => {
@@ -17,7 +17,7 @@ process.on("uncaughtException", err => {
 
 const {ArgumentParser} = require("argparse");
 
-const pkg = require("./package");
+const pkg = require("../package");
 
 const argparser = new ArgumentParser({
     description: pkg.description,

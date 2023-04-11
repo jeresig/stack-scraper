@@ -10,9 +10,10 @@ const Spooky = require("spooky");
 const glob = require("glob");
 const findit = require("findit");
 const request = require("request");
+const xpath = require("xpath");
 
-const fileUtils = require("./src/file.js");
-const extractUtils = require("./src/extract.js");
+const fileUtils = require("./file.js");
+const extractUtils = require("./extract.js");
 
 const pageSettings = {
     loadImages: false,
@@ -430,19 +431,13 @@ class StackScraper {
                     `${pageID}.xml`);
 
                 fileUtils.readXMLFile(xmlFile, (err, xmlDoc) => {
-                    if (xmlDoc.errors && xmlDoc.errors.length > 0) {
-                        if (this.options.debug) {
-                            console.log("XML Tidy Error:", xmlDoc.errors);
-                        }
-                    }
-
-                    if (err) {
-                        return callback(err || xmlDoc.errors);
+                    if (err || !xmlDoc) {
+                        return callback(err);
                     }
 
                     if (queueLevel.root) {
-                        const roots = xmlDoc.find(queueLevel.root);
-                        callback(null, roots.map(root => {
+                        const roots = xpath.select(queueLevel.root, xmlDoc);
+                        callback(null, Array.from(roots).map(root => {
                             const clonedData = cloneDeep(data);
                             extractUtils.extract(root, queueLevel.extract,
                                 clonedData);
