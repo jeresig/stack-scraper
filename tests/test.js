@@ -82,7 +82,7 @@ const scraper = require(scraperTestFile)();
 
 if (scraper.type === "server") {
     const staticDir = `${__dirname}/${scraper.source}`;
-    const app = express.createServer();
+    const app = express();
 
     let errors = 0;
 
