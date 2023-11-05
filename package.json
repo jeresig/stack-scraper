@@ -1,6 +1,6 @@
 {
   "name": "stack-scraper",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Stack Scraper. Easily download complex web sites.",
   "main": "stack-scraper.js",
   "directories": {
@@ -19,21 +19,21 @@
     "url": "https://github.com/jeresig/stack-scraper/issues"
   },
   "dependencies": {
-    "argparse": "1.0.9",
-    "async": "2.5.0",
+    "argparse": "^2.0.1",
+    "async": "^3.2.5",
     "diskdb": "^0.1.17",
-    "findit": "2.0.0",
-    "glob": "7.1.2",
-    "graceful-fs": "4.1.11",
-    "iconv": "2.3.5",
-    "lodash": "4.17.4",
-    "request": "2.83.0",
-    "rimraf": "2.6.2",
+    "findit": "^2.0.0",
+    "glob": "^10.3.10",
+    "graceful-fs": "^4.2.11",
+    "iconv": "^3.0.1",
+    "lodash": "^4.17.21",
+    "request": "^2.88.2",
+    "rimraf": "^5.0.5",
     "spooky": "git://github.com/jeresig/SpookyJS.git#exec2",
     "xmldom": "^0.6.0",
-    "xpath": "^0.0.32"
+    "xpath": "^0.0.33"
   },
   "devDependencies": {
-    "express": "4.16.2"
+    "express": "^4.18.2"
   }
 }
